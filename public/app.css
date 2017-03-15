@@ -11,9 +11,12 @@ body {
     margin-top: 5px;
 }
 
-/* StatusMessage */
-#statusMessage{
+#scores{
     text-align: center;
+}
+
+#editor {
+    height: 100vh;
 }
 
 canvas .default {

@@ -170,8 +170,8 @@ document.addEventListener("keydown", function (e) {
 
 function getRandomIntInclusive(min, max) {
     min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    max = ~~(max);
+    return ~~(Math.random() * (max - min + 1)) + min;
 }
 
 function endGame() {
@@ -228,11 +228,8 @@ function newGame() {
     /* portal position */
     do { // Not on initPos
         rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
-        console.log("RAND " + JSON.stringify(rand) + eqPos(rand, initPos));
     } while (eqPos(rand, initPos))
     portal = { column: rand.column, row: rand.row };
-
-    console.log("INITPOS " + JSON.stringify(initPos) + " PORTALPOS " + JSON.stringify(portal));
 
     /* generate random monsters */
     for (var i = 0; i < nbMonsters; i++) {
