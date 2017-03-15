@@ -1,6 +1,7 @@
 
 
 # Inference engine
+Followed the [tutorial](https://curiosity-driven.org/prolog-interpreter) to build a simple inference engine.
 
 1. Facts
 2. Rules

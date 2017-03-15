@@ -1,38 +1,37 @@
-// Vue.config.debug = true;
+/* Vue.config.debug = true; */
 
-var initPos = { column: 0, row: 0 };
-var currentPosition = initPos;
-var pathUser = [initPos];
+/* init grid GUI */
 var gContext;
 var height = screen.availHeight;
-// init
-var nbRows = 10; // square Grid
+var nbRows = 10;
 var nbCols = 10;
-var nbMonster = 2;
-var nbHole = 2;
-var kPW = ~~((height - 250) / nCols);
-var kPH = ~~((height - 250) / nRows);
-var kPiW = 1 + (nCols * this.kPW);
-var kPiH = 1 + (nRows * this.kPH);
-var nbMonsters = 2;
+var kPW = ~~((height - 250) / nbCols);
+var kPH = ~~((height - 250) / nbRows);
+var kPiW = 1 + (nbCols * this.kPW);
+var kPiH = 1 + (nbRows * this.kPH);
+/* game vars */
+var initPos = {};
+var currentPosition = initPos;
+var pathUser = [];
+var nbMonsters = ~~((nbCols * nbRows) / 50);
 var monsters = [];
 var rainbows = [];
-var nbHoles = 2;
+var nbHoles = ~~((nbCols * nbRows) / 50);
 var holes = [];
 var clouds = [];
-var portal = { column: nbCols-1, row: nbRows-1 };
+var portal = {};
 
 var game = new Vue({
     el: '#scores',
     data: {
-        // gameboard
+        /* gameboard */
         nbRows: nbRows,
         nbCols: nbCols,
         kPieceWidth: kPW,
         kPieceHeight: kPH,
         kPixelWidth: kPiW,
-        kPixelHeight: kPiH,                
-        // scoreboard
+        kPixelHeight: kPiH,
+        /* scoreboard */
         timer: '',
         gameEnded: false,
         score: 0
@@ -49,7 +48,7 @@ var game = new Vue({
             this.kPixelWidth = 1 + (this.nbRows * this.kPieceWidth);
             this.kPixelHeight = 1 + (this.nbCols * this.kPieceHeight);
             newGame();
-        }        
+        }
     }
 });
 
@@ -81,51 +80,47 @@ function drawCharacters(position) {
         var y = (portal.row * game.kPieceHeight);
         gContext.drawImage(imgPortal, x, y, game.kPieceWidth, game.kPieceHeight)
     }
-    imgPortal.src = "./assets/portal.jpg";
+    imgPortal.src = "./assets/portal.png";
     /* monsters */
     var imgMonster = new Image();
     imgMonster.onload = function () {
-        monsters
-            .map(function (pos) {
-                var x = (pos.column * game.kPieceWidth);
-                var y = (pos.row * game.kPieceHeight);
-                gContext.drawImage(imgMonster, x, y, game.kPieceWidth, game.kPieceHeight)
-            })
+        monsters.map(function (pos) {
+            var x = (pos.column * game.kPieceWidth);
+            var y = (pos.row * game.kPieceHeight);
+            gContext.drawImage(imgMonster, x, y, game.kPieceWidth, game.kPieceHeight)
+        })
     }
     imgMonster.src = "./assets/monster.png";
     /* rainbows */
     var imgRainbow = new Image();
     imgRainbow.onload = function () {
-        rainbows
-            .map(function (pos) {
-                var x = (pos.column * game.kPieceWidth);
-                var y = (pos.row * game.kPieceHeight);
-                gContext.drawImage(imgRainbow, x, y, game.kPieceWidth, game.kPieceHeight)
-            })
+        rainbows.map(function (pos) {
+            var x = (pos.column * game.kPieceWidth);
+            var y = (pos.row * game.kPieceHeight);
+            gContext.drawImage(imgRainbow, x, y, game.kPieceWidth, game.kPieceHeight)
+        })
     }
     imgRainbow.src = "./assets/rainbow.png";
     /* holes */
     var imgHole = new Image();
     imgHole.onload = function () {
-        holes
-            .map(function (pos) {
-                var x = (pos.column * game.kPieceWidth);
-                var y = (pos.row * game.kPieceHeight);
-                gContext.drawImage(imgHole, x, y, game.kPieceWidth, game.kPieceHeight)
-            })
+        holes.map(function (pos) {
+            var x = (pos.column * game.kPieceWidth);
+            var y = (pos.row * game.kPieceHeight);
+            gContext.drawImage(imgHole, x, y, game.kPieceWidth, game.kPieceHeight)
+        })
     }
-    imgHole.src = "./assets/hole.jpg";
+    imgHole.src = "./assets/hole.png";
     /* clouds */
     var imgCloud = new Image();
     imgCloud.onload = function () {
-        clouds
-            .map(function (pos) {
-                var x = (pos.column * game.kPieceWidth);
-                var y = (pos.row * game.kPieceHeight);
-                gContext.drawImage(imgCloud, x, y, game.kPieceWidth, game.kPieceHeight)
-            })
+        clouds.map(function (pos) {
+            var x = (pos.column * game.kPieceWidth);
+            var y = (pos.row * game.kPieceHeight);
+            gContext.drawImage(imgCloud, x, y, game.kPieceWidth, game.kPieceHeight)
+        })
     }
-    imgCloud.src = "./assets/cloud.jpg";    
+    imgCloud.src = "./assets/cloud.png";
 }
 
 function drawBoard() {
@@ -166,70 +161,12 @@ document.addEventListener("keydown", function (e) {
         if (newPosition.column == game.nbCols - 1 && newPosition.row == game.nbRows - 1) { // End of the game
             endGame();
         }
+        if (isInsideGrid(newPosition)) {
+            pathUser.push(newPosition);
+        }
         drawBoard();
     }
 }, false);
-
-function zero2D(rows, cols) {
-    var array = [], row = [];
-    while (cols--) row.push(0);
-    while (rows--) array.push(row.slice());
-    return array;
-}
-
-function search(strat) {
-    var path = [];
-    var matrix = zero2D(game.nbRows, game.nbCols);
-    mushroomsCopy
-        .map(function (e, i, arr) {
-            matrix[e.row][e.column]++;
-        });
-    var maxLength = Math.max(game.nbCols, game.nbRows);
-    var temp;
-    var max = 0;
-    var borders = [];
-    var border = [];
-    /* mark matrix from end to begin */
-    for (var k = 2 * (maxLength - 1); k >= 0; k--) {
-        for (var y = game.nbCols - 1; y >= 0; --y) {
-            var x = k - y;
-            if (x >= 0 && x < game.nbRows) {
-                var d = 0;
-                if (y != game.nbRows - 1) {
-                    d = matrix[y + 1][x];
-                }
-                if (x != game.nbCols - 1) {
-                    if (matrix[y][x + 1] > d) {
-                        d = matrix[y][x + 1];
-                    }
-                }
-                matrix[y][x] += d;
-            }
-        }
-    }
-    /* score */
-    game.robotScore = matrix[0][0];
-    /* find the path */
-    var curr = { column: 0, row: 0 };
-    path.push({ column: 0, row: 0 });
-    while (!(curr.column == game.nbCols - 1 && curr.row == game.nbRows - 1)) {
-        if (curr.row < game.nbRows - 1) {
-            if (curr.column < game.nbCols - 1) {
-                if (matrix[curr.row + 1][curr.column] >= matrix[curr.row][curr.column + 1]) {
-                    curr.row++;
-                } else {
-                    curr.column++;
-                }
-            } else {
-                curr.row++;
-            }
-        } else {
-            curr.column++;
-        }
-        path.push({ column: curr.column, row: curr.row });
-    }
-    return path;
-}
 
 function getRandomIntInclusive(min, max) {
     min = Math.ceil(min);
@@ -238,7 +175,6 @@ function getRandomIntInclusive(min, max) {
 }
 
 function endGame() {
-    drawResults();
     game.gameEnded = true;
 }
 
@@ -257,37 +193,85 @@ function startTimer(duration) {
     }, 1000);
 }
 
+function eqPos(pos1, pos2) {
+    return pos1.column == pos2.column && pos1.row == pos2.row
+}
+
+function pushCardinal(array, pos) {
+    var card = [
+        { column: pos.column, row: pos.row - 1 },
+        { column: pos.column, row: pos.row + 1 },
+        { column: pos.column - 1, row: pos.row },
+        { column: pos.column + 1, row: pos.row }
+    ];
+    card.map(function (c) {
+        if (isInsideGrid(c) && !eqPos(c, initPos) && !eqPos(c, portal) && !monsters.findMatch(c, eqPos)
+            && !holes.findMatch(c, eqPos) && !clouds.findMatch(c, eqPos) && !rainbows.findMatch(c, eqPos)) {
+            array.push(c);
+        }
+    })
+}
+
 function newGame() {
+    /* reset game vars */
+    initPos = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
     currentPosition = initPos;
-    pathUser = [initPos];
-    game.mushrooms = [];
-    currentPosition = { column: 0, row: 0 };
+    pathUser = [];
+    nbMonsters = ~~((nbCols * nbRows) / 50);
+    monsters = [];
+    rainbows = [];
+    nbHoles = ~~((nbCols * nbRows) / 50);
+    holes = [];
+    clouds = [];
     game.gameEnded = false;
-    // timer
-    startTimer(game.nbRows);
-    // generate random monsters
+
+    /* portal position */
+    do { // Not on initPos
+        rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
+        console.log("RAND " + JSON.stringify(rand) + eqPos(rand, initPos));
+    } while (eqPos(rand, initPos))
+    portal = { column: rand.column, row: rand.row };
+
+    console.log("INITPOS " + JSON.stringify(initPos) + " PORTALPOS " + JSON.stringify(portal));
+
+    /* generate random monsters */
     for (var i = 0; i < nbMonsters; i++) {
         var rand;
-        do { // Not on clouds || rainbows || holes
+        do { // Not on initPos || portal || monsters
             rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
-        } while ((rand.column == game.nbCols - 1 && rand.row == game.nbRows - 1) || (rand.column == 0 && rand.row == 0))
-        game.mushrooms.push({ column: rand.column, row: rand.row });
+        } while (eqPos(rand, initPos) || eqPos(rand, portal) || monsters.findMatch(rand, eqPos))
+        monsters.push({ column: rand.column, row: rand.row });
     }
-    // remove duplicates
-    game.mushrooms = game.mushrooms.filter(function (e, i, self) {
-        return self.findIndex(function (p) {
-            return p.row === e.row && p.column === e.column;
-        }) === i;
+
+    /* generate random holes */
+    for (var i = 0; i < nbHoles; i++) {
+        var rand;
+        do { // Not on initPos || portal || monsters || holes
+            rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
+        } while (eqPos(rand, initPos) || eqPos(rand, portal) || monsters.findMatch(rand, eqPos) || holes.findMatch(rand, eqPos))
+        holes.push({ column: rand.column, row: rand.row });
+    }
+
+    /* generate rainbows : N/S/W/E for each monsters */
+    monsters.map(function (pos) {
+        pushCardinal(rainbows, pos);
     })
 
-    mushroomsCopy = game.mushrooms;
-    // canvas
+    /* generate clouds : N/S/W/E for each holes */
+    holes.map(function (pos) {
+        pushCardinal(clouds, pos);
+    })
+
+    /* canvas */
     var canvas = document.getElementById('canvas');
     canvas.width = game.kPixelWidth;
     canvas.height = game.kPixelHeight;
     var context = canvas.getContext("2d");
     gContext = context;
     drawBoard();
+
+    /* timer */
+    startTimer(game.nbRows);
 }
 
 function WindowLoad(event) {
