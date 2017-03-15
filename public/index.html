@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<html>
+
+<head>
+    <title>Smart Mario</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-7s5uDGW3AHqw6xtJmNNtr+OBRJUlgkNJEo78P4b0yRw= sha512-nNo+yCHEyn0smMxSswnf/OnX6/KwJuZTlNZBjauKhTK0c+zT+q5JOCx0UFhXQ6rJR9jg6Es8gPuD2uZcYDLqSw=="
+        crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="./app.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1024" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+</head>
+
+<body>
+    <div class="container main">
+        <div id="scores">
+            <div class="row well well-lg" id="statusMessage">
+                <div class="col-md-4">
+                    <div v-if="gameEnded">nbRows<input v-model="nbRows" v-on:keyup.enter="updateGrid()"></div>
+                    <div v-if="gameEnded">nbCols<input v-if="gameEnded" v-model="nbCols" v-on:keyup.enter="updateGrid()"></div>
+                </div>
+                <div class="col-md-4">
+                    <h2>timer: {{timer}}</h2>
+                    <h3>score: {{score()}}</h3>
+                    <h3 v-if="gameEnded">robotScore: {{robotScore}}</h3>
+                    <button v-if="gameEnded" @click="newGame()" type="button" class="btn btn-success">New Game</button>
+                </div>
+                <div class="col-md-4">
+                    <h4 v-if="gameEnded" style="color: rgba(71,156,242,0.5)">user path</h4>
+                    <h4 v-if="gameEnded" style="color: rgba(237,3,34,0.5)">robot path</h4>
+                    <h1 v-if="win()"> YOU WIN </h1>
+                    <h1 v-if="loose()"> YOU LOOSE </h1>                    
+                </div>                
+            </div>
+            <div class="jumbotron animated">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/1.0.14/vue.js"></script>
+<script src="./app.js" type="text/javascript"></script>
+
+</html>
