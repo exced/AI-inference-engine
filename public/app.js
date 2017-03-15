@@ -1,15 +1,25 @@
 /* Vue.config.debug = true; */
 
+/* rules */
+var rulesText = '';
+var rules;
+var knowledges;
+var goal;
+/* editor */
+var editor = ace.edit("editor");
+editor.setTheme("ace/theme/chrome");
+editor.getSession().setMode("ace/mode/prolog");
 /* init grid GUI */
 var gContext;
 var height = screen.availHeight;
 var nbRows = 10;
 var nbCols = 10;
-var kPW = ~~((height - 250) / nbCols);
-var kPH = ~~((height - 250) / nbRows);
-var kPiW = 1 + (nbCols * this.kPW);
-var kPiH = 1 + (nbRows * this.kPH);
+var kPieceWidth = ~~((height - 250) / nbCols);
+var kPieceHeight = ~~((height - 250) / nbRows);
+var kPixelWidth = 1 + (nbCols * this.kPieceWidth);
+var kPixelHeight = 1 + (nbRows * this.kPieceHeight);
 /* game vars */
+var gameEnded = false;
 var initPos = {};
 var currentPosition = initPos;
 var pathUser = [];
@@ -24,31 +34,16 @@ var portal = {};
 var game = new Vue({
     el: '#scores',
     data: {
-        /* gameboard */
-        nbRows: nbRows,
-        nbCols: nbCols,
-        kPieceWidth: kPW,
-        kPieceHeight: kPH,
-        kPixelWidth: kPiW,
-        kPixelHeight: kPiH,
         /* scoreboard */
         timer: '',
-        gameEnded: false,
         score: 0
     },
     computed: {
     },
     methods: {
-        newGame: function () {
-            newGame();
+        step: function () {
+            step();
         },
-        updateGrid: function () {
-            this.kPieceWidth = ~~((height - 250) / this.nbCols);
-            this.kPieceHeight = ~~((height - 250) / this.nbRows);
-            this.kPixelWidth = 1 + (this.nbRows * this.kPieceWidth);
-            this.kPixelHeight = 1 + (this.nbCols * this.kPieceHeight);
-            newGame();
-        }
     }
 });
 
@@ -60,7 +55,7 @@ else if (window.attachEvent) { // IE
 }
 
 function isInsideGrid(position) {
-    return (position.row >= 0 && position.row < game.nbRows) && (position.column >= 0 && position.column < game.nbCols);
+    return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
 }
 
 function drawCharacters(position) {
@@ -68,26 +63,26 @@ function drawCharacters(position) {
     var imgUnicorn = new Image();
     imgUnicorn.onload = function () {
         // transform row / column to grid coords
-        var x = (position.column * game.kPieceWidth);
-        var y = (position.row * game.kPieceHeight);
-        gContext.drawImage(imgUnicorn, x, y, game.kPieceWidth, game.kPieceHeight)
+        var x = (position.column * kPieceWidth);
+        var y = (position.row * kPieceHeight);
+        gContext.drawImage(imgUnicorn, x, y, kPieceWidth, kPieceHeight)
     }
     imgUnicorn.src = "./assets/unicorn.png";
     /* portal */
     var imgPortal = new Image();
     imgPortal.onload = function () {
-        var x = (portal.column * game.kPieceWidth);
-        var y = (portal.row * game.kPieceHeight);
-        gContext.drawImage(imgPortal, x, y, game.kPieceWidth, game.kPieceHeight)
+        var x = (portal.column * kPieceWidth);
+        var y = (portal.row * kPieceHeight);
+        gContext.drawImage(imgPortal, x, y, kPieceWidth, kPieceHeight)
     }
     imgPortal.src = "./assets/portal.png";
     /* monsters */
     var imgMonster = new Image();
     imgMonster.onload = function () {
         monsters.map(function (pos) {
-            var x = (pos.column * game.kPieceWidth);
-            var y = (pos.row * game.kPieceHeight);
-            gContext.drawImage(imgMonster, x, y, game.kPieceWidth, game.kPieceHeight)
+            var x = (pos.column * kPieceWidth);
+            var y = (pos.row * kPieceHeight);
+            gContext.drawImage(imgMonster, x, y, kPieceWidth, kPieceHeight)
         })
     }
     imgMonster.src = "./assets/monster.png";
@@ -95,9 +90,9 @@ function drawCharacters(position) {
     var imgRainbow = new Image();
     imgRainbow.onload = function () {
         rainbows.map(function (pos) {
-            var x = (pos.column * game.kPieceWidth);
-            var y = (pos.row * game.kPieceHeight);
-            gContext.drawImage(imgRainbow, x, y, game.kPieceWidth, game.kPieceHeight)
+            var x = (pos.column * kPieceWidth);
+            var y = (pos.row * kPieceHeight);
+            gContext.drawImage(imgRainbow, x, y, kPieceWidth, kPieceHeight)
         })
     }
     imgRainbow.src = "./assets/rainbow.png";
@@ -105,9 +100,9 @@ function drawCharacters(position) {
     var imgHole = new Image();
     imgHole.onload = function () {
         holes.map(function (pos) {
-            var x = (pos.column * game.kPieceWidth);
-            var y = (pos.row * game.kPieceHeight);
-            gContext.drawImage(imgHole, x, y, game.kPieceWidth, game.kPieceHeight)
+            var x = (pos.column * kPieceWidth);
+            var y = (pos.row * kPieceHeight);
+            gContext.drawImage(imgHole, x, y, kPieceWidth, kPieceHeight)
         })
     }
     imgHole.src = "./assets/hole.png";
@@ -115,26 +110,26 @@ function drawCharacters(position) {
     var imgCloud = new Image();
     imgCloud.onload = function () {
         clouds.map(function (pos) {
-            var x = (pos.column * game.kPieceWidth);
-            var y = (pos.row * game.kPieceHeight);
-            gContext.drawImage(imgCloud, x, y, game.kPieceWidth, game.kPieceHeight)
+            var x = (pos.column * kPieceWidth);
+            var y = (pos.row * kPieceHeight);
+            gContext.drawImage(imgCloud, x, y, kPieceWidth, kPieceHeight)
         })
     }
     imgCloud.src = "./assets/cloud.png";
 }
 
 function drawBoard() {
-    gContext.clearRect(0, 0, game.kPixelWidth, game.kPixelHeight);
+    gContext.clearRect(0, 0, kPixelWidth, kPixelHeight);
     gContext.beginPath();
     /* vertical lines */
-    for (var x = 0; x <= game.kPixelWidth; x += game.kPieceWidth) {
+    for (var x = 0; x <= kPixelWidth; x += kPieceWidth) {
         gContext.moveTo(0.5 + x, 0);
-        gContext.lineTo(0.5 + x, game.kPixelHeight);
+        gContext.lineTo(0.5 + x, kPixelHeight);
     }
     /* horizontal lines */
-    for (var y = 0; y <= game.kPixelHeight; y += game.kPieceHeight) {
+    for (var y = 0; y <= kPixelHeight; y += kPieceHeight) {
         gContext.moveTo(0, 0.5 + y);
-        gContext.lineTo(game.kPixelWidth, 0.5 + y);
+        gContext.lineTo(kPixelWidth, 0.5 + y);
     }
     gContext.closePath();
     /* draw */
@@ -144,7 +139,7 @@ function drawBoard() {
 }
 
 document.addEventListener("keydown", function (e) {
-    if (!game.gameEnded) {
+    if (!gameEnded) {
         var newPosition = { column: currentPosition.column, row: currentPosition.row };
         if (e.keyCode == 68 || e.keyCode == 39) { // D or Right
             newPosition.column += 1;
@@ -158,10 +153,14 @@ document.addEventListener("keydown", function (e) {
         if (e.keyCode == 65 || e.keyCode == 37) { // A or Left
             newPosition.column -= 1;
         }
-        if (newPosition.column == game.nbCols - 1 && newPosition.row == game.nbRows - 1) { // End of the game
+        if (e.keyCode == 32) { // spacebar
+            inferEngine.step();
+        }
+        if (eqPos(newPosition, portal)) { // End of the game
             endGame();
         }
         if (isInsideGrid(newPosition)) {
+            currentPosition = newPosition;
             pathUser.push(newPosition);
         }
         drawBoard();
@@ -175,7 +174,7 @@ function getRandomIntInclusive(min, max) {
 }
 
 function endGame() {
-    game.gameEnded = true;
+    gameEnded = true;
 }
 
 function startTimer(duration) {
@@ -214,7 +213,7 @@ function pushCardinal(array, pos) {
 
 function newGame() {
     /* reset game vars */
-    initPos = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
+    initPos = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
     currentPosition = initPos;
     pathUser = [];
     nbMonsters = ~~((nbCols * nbRows) / 50);
@@ -223,11 +222,11 @@ function newGame() {
     nbHoles = ~~((nbCols * nbRows) / 50);
     holes = [];
     clouds = [];
-    game.gameEnded = false;
+    gameEnded = false;
 
     /* portal position */
     do { // Not on initPos
-        rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
+        rand = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
     } while (eqPos(rand, initPos))
     portal = { column: rand.column, row: rand.row };
 
@@ -235,7 +234,7 @@ function newGame() {
     for (var i = 0; i < nbMonsters; i++) {
         var rand;
         do { // Not on initPos || portal || monsters
-            rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
+            rand = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
         } while (eqPos(rand, initPos) || eqPos(rand, portal) || monsters.findMatch(rand, eqPos))
         monsters.push({ column: rand.column, row: rand.row });
     }
@@ -244,7 +243,7 @@ function newGame() {
     for (var i = 0; i < nbHoles; i++) {
         var rand;
         do { // Not on initPos || portal || monsters || holes
-            rand = { column: getRandomIntInclusive(0, game.nbCols - 1), row: getRandomIntInclusive(0, game.nbRows - 1) };
+            rand = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
         } while (eqPos(rand, initPos) || eqPos(rand, portal) || monsters.findMatch(rand, eqPos) || holes.findMatch(rand, eqPos))
         holes.push({ column: rand.column, row: rand.row });
     }
@@ -261,16 +260,25 @@ function newGame() {
 
     /* canvas */
     var canvas = document.getElementById('canvas');
-    canvas.width = game.kPixelWidth;
-    canvas.height = game.kPixelHeight;
+    canvas.width = kPixelWidth;
+    canvas.height = kPixelHeight;
     var context = canvas.getContext("2d");
     gContext = context;
     drawBoard();
 
     /* timer */
-    startTimer(game.nbRows);
+    startTimer(nbRows);
 }
 
 function WindowLoad(event) {
     newGame();
-}        
+}
+
+/* inference AI */
+function ruleOccupiedCase(name) {
+    return 'occupied_case(' + name + ')';
+}
+
+function step() {
+    editor.setValue(editor.getValue() + "\n hey");
+}

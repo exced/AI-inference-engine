@@ -1,10 +1,12 @@
 function parser(tokens) {
     var current, done, scope;
+
     function next() {
         var next = tokens.next();
         current = next.value;
         done = next.done;
     }
+
     function parseAtom() {
         var name = current;
         if (!/^[A-Za-z_]+$/.test(name)) {
@@ -13,6 +15,7 @@ function parser(tokens) {
         next();
         return name;
     }
+
     function parseTerm() {
         if (current === '(') {
             next(); // eat (
@@ -58,6 +61,7 @@ function parser(tokens) {
         next(); // eat )
         return new Term(functor, args);
     }
+
     function parseRule() {
         var head = parseTerm();
         if (current === '.') {
@@ -89,6 +93,7 @@ function parser(tokens) {
         }
         return new Rule(head, body);
     }
+    
     next(); // start the tokens iterator
     return {
         parseRules: function () {

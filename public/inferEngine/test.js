@@ -1,6 +1,3 @@
-parser = require('./parser');
-lexer = require('./lexer');
-
 var rulesText = 'mother_child(stephanie, thorne).' +
     'mother_child(stephanie, kristen).' +
     'mother_child(stephanie, felicia).';
