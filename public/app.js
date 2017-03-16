@@ -1,14 +1,5 @@
 /* Vue.config.debug = true; */
 
-/* rules */
-var rulesText = '';
-var rules;
-var knowledges;
-var goal;
-/* editor */
-var editor = ace.edit("editor");
-editor.setTheme("ace/theme/chrome");
-editor.getSession().setMode("ace/mode/prolog");
 /* init grid GUI */
 var gContext;
 var height = screen.availHeight;
@@ -141,20 +132,17 @@ function drawBoard() {
 document.addEventListener("keydown", function (e) {
     if (!gameEnded) {
         var newPosition = { column: currentPosition.column, row: currentPosition.row };
-        if (e.keyCode == 68 || e.keyCode == 39) { // D or Right
+        if (e.keyCode == 39) { // Right
             newPosition.column += 1;
         }
-        if (e.keyCode == 83 || e.keyCode == 40) { // S or Down
+        if (e.keyCode == 40) { // Down
             newPosition.row += 1;
         }
-        if (e.keyCode == 87 || e.keyCode == 39) { // W or Up
+        if (e.keyCode == 39) { // Up
             newPosition.row -= 1;
         }
-        if (e.keyCode == 65 || e.keyCode == 37) { // A or Left
+        if (e.keyCode == 37) { // Left
             newPosition.column -= 1;
-        }
-        if (e.keyCode == 32) { // spacebar
-            inferEngine.step();
         }
         if (eqPos(newPosition, portal)) { // End of the game
             endGame();
@@ -196,19 +184,13 @@ function eqPos(pos1, pos2) {
     return pos1.column == pos2.column && pos1.row == pos2.row
 }
 
-function pushCardinal(array, pos) {
-    var card = [
+function posCardinal(pos) {
+    return [
         { column: pos.column, row: pos.row - 1 },
         { column: pos.column, row: pos.row + 1 },
         { column: pos.column - 1, row: pos.row },
         { column: pos.column + 1, row: pos.row }
     ];
-    card.map(function (c) {
-        if (isInsideGrid(c) && !eqPos(c, initPos) && !eqPos(c, portal) && !monsters.findMatch(c, eqPos)
-            && !holes.findMatch(c, eqPos) && !clouds.findMatch(c, eqPos) && !rainbows.findMatch(c, eqPos)) {
-            array.push(c);
-        }
-    })
 }
 
 function newGame() {
@@ -250,12 +232,24 @@ function newGame() {
 
     /* generate rainbows : N/S/W/E for each monsters */
     monsters.map(function (pos) {
-        pushCardinal(rainbows, pos);
+        var card = posCardinal(pos);
+        card.map(function (c) {
+            if (isInsideGrid(c) && !eqPos(c, initPos) && !eqPos(c, portal) && !monsters.findMatch(c, eqPos)
+                && !holes.findMatch(c, eqPos) && !clouds.findMatch(c, eqPos) && !rainbows.findMatch(c, eqPos)) {
+                rainbows.push(c);
+            }
+        })
     })
 
     /* generate clouds : N/S/W/E for each holes */
     holes.map(function (pos) {
-        pushCardinal(clouds, pos);
+        var card = posCardinal(pos);
+        card.map(function (c) {
+            if (isInsideGrid(c) && !eqPos(c, initPos) && !eqPos(c, portal) && !monsters.findMatch(c, eqPos)
+                && !holes.findMatch(c, eqPos) && !clouds.findMatch(c, eqPos) && !rainbows.findMatch(c, eqPos)) {
+                clouds.push(c);
+            }
+        })
     })
 
     /* canvas */
@@ -266,6 +260,9 @@ function newGame() {
     gContext = context;
     drawBoard();
 
+    /* inference engine */
+    initRules();
+
     /* timer */
     startTimer(nbRows);
 }
@@ -274,11 +271,98 @@ function WindowLoad(event) {
     newGame();
 }
 
+/* rules */
+const unicornStr = 'unicorn';
+const cloudStr = 'cloud';
+const rainbowStr = 'rainbow';
+const monsterStr = 'monster';
+const holeStr = 'hole';
+const emptyStr = 'empty';
+var rulesText = '';
+var rules = [];
+var db;
+/* editor */
+var editor = ace.edit("editor");
+editor.setTheme("ace/theme/chrome");
+editor.getSession().setMode("ace/mode/prolog");
+editor.setReadOnly(true);
+
+function initRules() {
+    /* board rules */
+    for (var i = 0; i < nbRows; i++) {
+        for (var j = 0; j < nbCols; j++) {
+            var p = posCardinal({ column: j, row: i })
+            p.map(function (pos) {
+                if (isInsideGrid(pos)) {
+                    addRule(ruleAccessibleFrom({ column: j, row: i }, pos));
+                }
+            });
+        }
+    }
+    /* init pos */
+    addRule(ruleAt(unicornStr, initPos));
+    rules = parser(lexer(rulesText)).parseRules();
+    db = new Database(rules); 
+}
+
+function addRule(ruleText) {
+    rulesText += ruleText;
+    editor.insert(ruleText + ' \n');
+}
+
 /* inference AI */
-function ruleOccupiedCase(name) {
-    return 'occupied_case(' + name + ')';
+/* rules :
+ * at(unicorn|monster|cloud|rainbow|hole, case)
+ * accessible_from(pos1, pos2)
+*/
+function posToText(pos) {
+    return 'column' + pos.column + 'row' + pos.row;
+}
+
+function parsePosText(posText) {
+    var p = posText.match(/\d/g);
+    return { column: p[0], row: p[1] }
+}
+
+function ruleAccessibleFrom(posTo, posFrom) {
+    return 'accessible_from(' + posToText(posTo) + ', ' + posToText(posFrom) + ').';
+}
+
+function queryAccessibleFrom(posFrom) {
+    var pos = [];
+    var goalText = 'accessible_from(X, ' + posToText(posFrom) + ')';
+    var goal = parser(lexer(goalText)).parseTerm();
+    var x = goal.args[0]; // variable X
+    for (var item of db.query(goal)) {
+        pos.push(parsePosText(goal.match(item).get(x).functor));
+    }
+    return pos;
+}
+
+function ruleAt(name, pos) {
+    return 'at(' + name + ', ' + posToText(pos) + ').';
+}
+
+function queryAt(pos) {
+    var at = [];
+    var goalText = 'at(X, ' + posToText(pos) + ')';
+    var goal = parser(lexer(goalText)).parseTerm();
+    var x = goal.args[0]; // variable X
+    return goal.match(db.query(goal)[0]).get(x).functor;
+}
+
+function ruleNextSafeFrom(pos) {
+    return 'next_safe_from(X, Y) :- .';
 }
 
 function step() {
-    editor.setValue(editor.getValue() + "\n hey");
+    var pos;
+    var goalText = 'best_move(X, ' + posToText(currentPosition) + ')';
+    var goal = parser(lexer(goalText)).parseTerm();
+    var x = goal.args[0]; // variable X
+    for (var item of db.query(goal)) {
+        pos.push(goal.match(item).get(x).functor);
+    }
+    console.log("step pos : " + JSON.stringify(pos));
+    return pos;
 }

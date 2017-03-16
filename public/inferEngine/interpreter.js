@@ -137,6 +137,10 @@ function Database(rules) {
     this.rules = rules;
 }
 
+Database.prototype.add = function* (rule) {
+    this.rules.push(rule);
+}
+
 Database.prototype.query = function* (goal) {
     for (var i = 0, rule; rule = this.rules[i]; i++) {
         var match = rule.head.match(goal);

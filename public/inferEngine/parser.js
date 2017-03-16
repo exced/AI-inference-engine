@@ -9,7 +9,7 @@ function parser(tokens) {
 
     function parseAtom() {
         var name = current;
-        if (!/^[A-Za-z_]+$/.test(name)) {
+        if (!/^[A-Za-z0-9_]+$/.test(name)) {
             throw new SyntaxError('Bad atom name: ' + name);
         }
         next();
@@ -33,7 +33,7 @@ function parser(tokens) {
             return new Conjunction(args);
         }
         var functor = parseAtom();
-        if (/^[A-Z_][A-Za-z_]*$/.test(functor)) {
+        if (/^[A-Z_][A-Za-z0-9_]*$/.test(functor)) {
             if (functor === '_') {
                 return new Variable('_');
             }
