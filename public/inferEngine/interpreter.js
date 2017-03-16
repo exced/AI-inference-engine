@@ -141,8 +141,7 @@ function Database(rules) {
     this.rules = rules;
 }
 
-Database.prototype.add = function* (rule) {
-    /* no doublon */
+Database.prototype.addRule = function* (rule) {
     this.rules.push(rule);
 }
 

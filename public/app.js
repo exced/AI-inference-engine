@@ -281,8 +281,7 @@ const rainbowStr = 'rainbow';
 const monsterStr = 'monster';
 const holeStr = 'hole';
 const emptyStr = 'empty';
-var rulesText = '';
-var rules = [];
+var rulesText = [];
 var db;
 /* editor */
 var editor = ace.edit("editor");
@@ -297,18 +296,26 @@ function initRules() {
             var p = posCardinal({ column: j, row: i })
             p.map(function (pos) {
                 if (isInsideGrid(pos)) {
-                    addRule(ruleAccessibleFrom({ column: j, row: i }, pos));
+                    rulesText.push(ruleAccessibleFrom({ column: j, row: i }, pos));
                 }
             });
         }
     }
-    rules = parser(lexer(rulesText)).parseRules();
+    /* editor */
+    rulesText.map(function (ruleText) {
+        editor.insert(ruleText + ' \n');
+    });
+    /* knowledges */
+    var rules = parser(lexer(rulesText.join(''))).parseRules();
     db = new Database(rules);
 }
 
 function addRule(ruleText) {
-    rulesText += ruleText;
-    editor.insert(ruleText + ' \n');
+    if (!rulesText.includes(ruleText)) {
+        db.addRule(parser(lexer(ruleText)).parseRules());
+        editor.insert(ruleText + ' \n');
+        rulesText.push(ruleText);
+    }
 }
 
 /* inference AI */
