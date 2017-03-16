@@ -133,11 +133,16 @@ Conjunction.prototype.substitute = function (bindings) {
     }));
 };
 
+function Disjunction(args) {
+    this.args = args;
+}
+
 function Database(rules) {
     this.rules = rules;
 }
 
 Database.prototype.add = function* (rule) {
+    /* no doublon */
     this.rules.push(rule);
 }
 

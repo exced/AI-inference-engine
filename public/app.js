@@ -32,8 +32,8 @@ var game = new Vue({
     computed: {
     },
     methods: {
-        step: function () {
-            step();
+        stepInfer: function () {
+            stepInfer();
         },
     }
 });
@@ -129,6 +129,17 @@ function drawBoard() {
     drawCharacters(currentPosition);
 }
 
+function stepGame(newPosition) {
+    if (eqPos(newPosition, portal)) { // End of the game
+        endGame();
+    }
+    if (isInsideGrid(newPosition)) {
+        currentPosition = newPosition;
+        pathUser.push(newPosition);
+    }
+    drawBoard();
+}
+
 document.addEventListener("keydown", function (e) {
     if (!gameEnded) {
         var newPosition = { column: currentPosition.column, row: currentPosition.row };
@@ -144,14 +155,7 @@ document.addEventListener("keydown", function (e) {
         if (e.keyCode == 37) { // Left
             newPosition.column -= 1;
         }
-        if (eqPos(newPosition, portal)) { // End of the game
-            endGame();
-        }
-        if (isInsideGrid(newPosition)) {
-            currentPosition = newPosition;
-            pathUser.push(newPosition);
-        }
-        drawBoard();
+        stepGame(newPosition);
     }
 }, false);
 
@@ -272,7 +276,6 @@ function WindowLoad(event) {
 }
 
 /* rules */
-const unicornStr = 'unicorn';
 const cloudStr = 'cloud';
 const rainbowStr = 'rainbow';
 const monsterStr = 'monster';
@@ -299,10 +302,8 @@ function initRules() {
             });
         }
     }
-    /* init pos */
-    addRule(ruleAt(unicornStr, initPos));
     rules = parser(lexer(rulesText)).parseRules();
-    db = new Database(rules); 
+    db = new Database(rules);
 }
 
 function addRule(ruleText) {
@@ -339,6 +340,7 @@ function queryAccessibleFrom(posFrom) {
     return pos;
 }
 
+/* already visited */
 function ruleAt(name, pos) {
     return 'at(' + name + ', ' + posToText(pos) + ').';
 }
@@ -346,23 +348,42 @@ function ruleAt(name, pos) {
 function queryAt(pos) {
     var at = [];
     var goalText = 'at(X, ' + posToText(pos) + ')';
+    console.log("goalText " + goalText);
     var goal = parser(lexer(goalText)).parseTerm();
     var x = goal.args[0]; // variable X
-    return goal.match(db.query(goal)[0]).get(x).functor;
+    //return goal.match(db.query(goal)[0]).get(x).functor;
+    for (var item of db.query(goal)) {
+        at.push(goal.match(item).get(x).functor);
+    }
+    return at;
 }
 
 function ruleNextSafeFrom(pos) {
-    return 'next_safe_from(X, Y) :- .';
+    return 'next_safe_from(X, Y) :- accessible_from().';
 }
 
-function step() {
-    var pos;
-    var goalText = 'best_move(X, ' + posToText(currentPosition) + ')';
-    var goal = parser(lexer(goalText)).parseTerm();
-    var x = goal.args[0]; // variable X
-    for (var item of db.query(goal)) {
-        pos.push(goal.match(item).get(x).functor);
+/* get and execute best action for current state with inference engine */
+function stepInfer() {
+    /* action */
+    console.log("currentPosition " + JSON.stringify(currentPosition));
+    pos = queryAccessibleFrom(currentPosition);
+    var newPosition = pos[0];
+    console.log("stepPosition " + JSON.stringify(currentPosition));
+    stepGame(newPosition);
+
+    /* update knowledges */
+    if (holes.findMatch(newPosition, eqPos)) {
+        addRule(ruleAt(holeStr, newPosition));
     }
-    console.log("step pos : " + JSON.stringify(pos));
-    return pos;
+    else if (clouds.findMatch(newPosition, eqPos)) {
+        addRule(ruleAt(cloudStr, newPosition));
+    }
+    else if (monsters.findMatch(newPosition, eqPos)) {
+        addRule(ruleAt(monsterStr, newPosition));
+    }
+    else if (rainbows.findMatch(newPosition, eqPos)) {
+        addRule(ruleAt(rainbowStr, newPosition));
+    } else {
+        addRule(ruleAt(emptyStr, newPosition));
+    }
 }
