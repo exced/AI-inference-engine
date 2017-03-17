@@ -1,0 +1,44 @@
+body {
+    padding-top: 10px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.main {
+    margin-top: 5px;
+}
+
+#scores{
+    text-align: center;
+}
+
+#editor {
+    height: 100vh;
+}
+
+#editorQuery {
+    height: 100px;
+}
+
+canvas .default {
+    border: 1px solid black;
+}
+
+canvas .active {
+    border: 1px solid red;
+}
+
+div .feedback {
+    color: red;
+    font-size: 1.0em;
+}
+
+canvas {
+    padding: 0;
+    margin: auto;
+    display: block;
+    background: #fff;
+}

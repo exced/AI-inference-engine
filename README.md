@@ -8,14 +8,8 @@ Followed the [tutorial](https://curiosity-driven.org/prolog-interpreter) to buil
 3. Implication
 4. Conjunction
 
-Term, atom, compound term = functor + arguments
-Variable : placeholder for terms.
-
-## Facts
-
-## Rules
-
-## Game
-decorative elements :
-* 
-* 
+Concepts :
+* Term
+* Atom
+* Compound term = functor + arguments
+* Variable : placeholder for terms

@@ -130,7 +130,9 @@ function drawBoard() {
 }
 
 function stepGame(newPosition) {
+    score--;
     if (eqPos(newPosition, portal)) { // End of the game
+        score += 10 * nbCols * nbRows;
         endGame();
     }
     if (isInsideGrid(newPosition)) {
@@ -266,6 +268,8 @@ function newGame() {
 
     /* inference engine */
     initRules();
+    /* infer_at */
+    addRule(ruleInferAt());
 
     /* timer */
     startTimer(nbRows);
@@ -323,69 +327,83 @@ function addRule(ruleText) {
  * at(unicorn|monster|cloud|rainbow|hole, case)
  * accessible_from(pos1, pos2)
 */
-function posToText(pos) {
-    return 'column' + pos.column + 'row' + pos.row;
-}
-
-function parsePosText(posText) {
-    var p = posText.match(/\d/g);
-    return { column: p[0], row: p[1] }
+function posText(pos) {
+    return 'pos(' + pos.column + ', ' + pos.row + ')';
 }
 
 function ruleAccessibleFrom(posTo, posFrom) {
-    return 'accessible_from(' + posToText(posTo) + ', ' + posToText(posFrom) + ').';
+    return 'accessible_from(' + posText(posTo) + ', ' + posText(posFrom) + ').';
 }
 
 function queryAccessibleFrom(posFrom) {
     var pos = [];
-    var goalText = 'accessible_from(X, ' + posToText(posFrom) + ')';
+    var goalText = 'accessible_from(X, ' + posText(posFrom) + ')';
     var goal = parser(lexer(goalText)).parseTerm();
     var x = goal.args[0]; // variable X
     for (var item of db.query(goal)) {
-        pos.push(parsePosText(goal.match(item).get(x).functor));
+        var col = goal.match(item).get(x).args[0].functor;
+        var row = goal.match(item).get(x).args[1].functor;
+        pos.push({ column: col, row: row });
     }
     return pos;
 }
 
 /* already visited */
 function ruleAt(name, pos) {
-    return 'at(' + name + ', ' + posToText(pos) + ').';
+    return 'at(' + name + ', ' + posText(pos) + ').';
 }
 
 function queryAt(pos) {
     var at = [];
     var goalText = 'at(X, ' + posToText(pos) + ')';
-    console.log("goalText " + goalText);
     var goal = parser(lexer(goalText)).parseTerm();
     var x = goal.args[0]; // variable X
-    //return goal.match(db.query(goal)[0]).get(x).functor;
     for (var item of db.query(goal)) {
         at.push(goal.match(item).get(x).functor);
     }
     return at;
 }
 
-function ruleNextSafeFrom(pos) {
-    return 'next_safe_from(X, Y) :- accessible_from().';
+/* infer at */
+function ruleInferAt(pos) {
+    return 'infer_at(X, Y) :- at(X, Z), accessible_from(Z, Y), accessible_from(Z,'+ posText(pos) + ').';
+}
+
+function queryInferAt(pos) {
+    var xs = [];
+    var ys = [];
+    var goalText = ruleInferAt(pos);
+    var goal = parser(lexer(goalText)).parseTerm();
+    var x = goal.args[0]; // variable X
+    var y = goal.args[1]; // variable Y
+    for (var item of db.query(goal)) {
+        xs.push(goal.match(item).get(x).functor);
+    }
+    for (var item of db.query(goal)) {
+        ys.push(goal.match(item).get(y).functor);
+    }    
+    /* probabilities */
+    return at;
 }
 
 /* get and execute best action for current state with inference engine */
 function stepInfer() {
-    /* action */
-    console.log("currentPosition " + JSON.stringify(currentPosition));
+    /* choose action */
     pos = queryAccessibleFrom(currentPosition);
+    /* decision making */
     var newPosition = pos[0];
-    console.log("stepPosition " + JSON.stringify(currentPosition));
     stepGame(newPosition);
 
-    /* update knowledges */
+    /* update knowledges, try to infer and update score */
     if (holes.findMatch(newPosition, eqPos)) {
+        score -= 10 * nbRows * nbCols;
         addRule(ruleAt(holeStr, newPosition));
     }
     else if (clouds.findMatch(newPosition, eqPos)) {
         addRule(ruleAt(cloudStr, newPosition));
     }
     else if (monsters.findMatch(newPosition, eqPos)) {
+        score -= 10 * nbRows * nbCols;
         addRule(ruleAt(monsterStr, newPosition));
     }
     else if (rainbows.findMatch(newPosition, eqPos)) {
