@@ -130,9 +130,9 @@ function drawBoard() {
 }
 
 function stepGame(newPosition) {
-    score--;
+    game.score--;
     if (eqPos(newPosition, portal)) { // End of the game
-        score += 10 * nbCols * nbRows;
+        game.score += 10 * nbCols * nbRows;
         endGame();
     }
     if (isInsideGrid(newPosition)) {
@@ -258,7 +258,7 @@ function newGame() {
         })
     })
 
-    /* canvas */
+    /* canvasGame */
     var canvas = document.getElementById('canvas');
     canvas.width = kPixelWidth;
     canvas.height = kPixelHeight;
@@ -266,10 +266,13 @@ function newGame() {
     gContext = context;
     drawBoard();
 
-    /* inference engine */
-    initRules();
-    /* infer_at */
-    addRule(ruleInferAt());
+    /* canvasKnowledges */
+    var canvas = document.getElementById('canvasK');
+    canvas.width = kPixelWidth;
+    canvas.height = kPixelHeight;
+    var context = canvas.getContext("2d");
+    gContext = context;
+    drawBoardK();    
 
     /* timer */
     startTimer(nbRows);
@@ -286,105 +289,9 @@ const monsterStr = 'monster';
 const holeStr = 'hole';
 const emptyStr = 'empty';
 var rulesText = [];
-var db;
-/* editor */
-var editor = ace.edit("editor");
-editor.setTheme("ace/theme/chrome");
-editor.getSession().setMode("ace/mode/prolog");
-editor.setReadOnly(true);
-
-function initRules() {
-    /* board rules */
-    for (var i = 0; i < nbRows; i++) {
-        for (var j = 0; j < nbCols; j++) {
-            var p = posCardinal({ column: j, row: i })
-            p.map(function (pos) {
-                if (isInsideGrid(pos)) {
-                    rulesText.push(ruleAccessibleFrom({ column: j, row: i }, pos));
-                }
-            });
-        }
-    }
-    /* editor */
-    rulesText.map(function (ruleText) {
-        editor.insert(ruleText + ' \n');
-    });
-    /* knowledges */
-    var rules = parser(lexer(rulesText.join(''))).parseRules();
-    db = new Database(rules);
-}
-
-function addRule(ruleText) {
-    if (!rulesText.includes(ruleText)) {
-        db.addRule(parser(lexer(ruleText)).parseRules());
-        editor.insert(ruleText + ' \n');
-        rulesText.push(ruleText);
-    }
-}
+var knowledges = [];
 
 /* inference AI */
-/* rules :
- * at(unicorn|monster|cloud|rainbow|hole, case)
- * accessible_from(pos1, pos2)
-*/
-function posText(pos) {
-    return 'pos(' + pos.column + ', ' + pos.row + ')';
-}
-
-function ruleAccessibleFrom(posTo, posFrom) {
-    return 'accessible_from(' + posText(posTo) + ', ' + posText(posFrom) + ').';
-}
-
-function queryAccessibleFrom(posFrom) {
-    var pos = [];
-    var goalText = 'accessible_from(X, ' + posText(posFrom) + ')';
-    var goal = parser(lexer(goalText)).parseTerm();
-    var x = goal.args[0]; // variable X
-    for (var item of db.query(goal)) {
-        var col = goal.match(item).get(x).args[0].functor;
-        var row = goal.match(item).get(x).args[1].functor;
-        pos.push({ column: col, row: row });
-    }
-    return pos;
-}
-
-/* already visited */
-function ruleAt(name, pos) {
-    return 'at(' + name + ', ' + posText(pos) + ').';
-}
-
-function queryAt(pos) {
-    var at = [];
-    var goalText = 'at(X, ' + posToText(pos) + ')';
-    var goal = parser(lexer(goalText)).parseTerm();
-    var x = goal.args[0]; // variable X
-    for (var item of db.query(goal)) {
-        at.push(goal.match(item).get(x).functor);
-    }
-    return at;
-}
-
-/* infer at */
-function ruleInferAt(pos) {
-    return 'infer_at(X, Y) :- at(X, Z), accessible_from(Z, Y), accessible_from(Z,'+ posText(pos) + ').';
-}
-
-function queryInferAt(pos) {
-    var xs = [];
-    var ys = [];
-    var goalText = ruleInferAt(pos);
-    var goal = parser(lexer(goalText)).parseTerm();
-    var x = goal.args[0]; // variable X
-    var y = goal.args[1]; // variable Y
-    for (var item of db.query(goal)) {
-        xs.push(goal.match(item).get(x).functor);
-    }
-    for (var item of db.query(goal)) {
-        ys.push(goal.match(item).get(y).functor);
-    }    
-    /* probabilities */
-    return at;
-}
 
 /* get and execute best action for current state with inference engine */
 function stepInfer() {
@@ -396,14 +303,14 @@ function stepInfer() {
 
     /* update knowledges, try to infer and update score */
     if (holes.findMatch(newPosition, eqPos)) {
-        score -= 10 * nbRows * nbCols;
+        game.score -= 10 * nbRows * nbCols;
         addRule(ruleAt(holeStr, newPosition));
     }
     else if (clouds.findMatch(newPosition, eqPos)) {
         addRule(ruleAt(cloudStr, newPosition));
     }
     else if (monsters.findMatch(newPosition, eqPos)) {
-        score -= 10 * nbRows * nbCols;
+        game.score -= 10 * nbRows * nbCols;
         addRule(ruleAt(monsterStr, newPosition));
     }
     else if (rainbows.findMatch(newPosition, eqPos)) {
@@ -411,4 +318,9 @@ function stepInfer() {
     } else {
         addRule(ruleAt(emptyStr, newPosition));
     }
+}
+
+/* probabilities */
+function bayes() {
+
 }
