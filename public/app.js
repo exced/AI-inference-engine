@@ -23,7 +23,7 @@ var holes = [];
 var clouds = [];
 var portal = {};
 /* inference vars */
-var knowledges; // { column, row, probMonster, probHole, passedOn }
+var knowledges = []; // { column, row, probMonster, probHole, passedOn }
 
 var game = new Vue({
     el: '#scores',
@@ -57,7 +57,7 @@ function isInsideGrid(position) {
 }
 
 function drawCharacters(position) {
-    /* unicorn */
+    /* hero */
     var imgHero = new Image();
     imgHero.onload = function () {
         // transform row / column to grid coords
@@ -105,15 +105,15 @@ function drawCharacters(position) {
     }
     imgHole.src = "./assets/hole.png";
     /* clouds */
-    var imgWind = new Image();
-    imgWind.onload = function () {
+    var imgCloud = new Image();
+    imgCloud.onload = function () {
         clouds.map(function (pos) {
             var x = (pos.column * kPieceWidth);
             var y = (pos.row * kPieceHeight);
-            gContext.drawImage(imgWind, x, y, kPieceWidth, kPieceHeight)
+            gContext.drawImage(imgCloud, x, y, kPieceWidth, kPieceHeight)
         })
     }
-    imgWind.src = "./assets/wind.png";
+    imgCloud.src = "./assets/wind.png";
 }
 
 function drawKnowledges() {
@@ -239,6 +239,7 @@ function newGame() {
     holes = [];
     clouds = [];
     gameEnded = false;
+    knowledges = [];
 
     /* portal position */
     do { // Not on initPos
@@ -303,10 +304,6 @@ function newGame() {
     gContextK = contextK;
     drawBoard(gContextK);
     drawKnowledges();
-
-    /* init knowledges */
-    var knowledges = null;
-    knowledges = new Database(knowledges);
 
     /* timer */
     startTimer(nbRows);

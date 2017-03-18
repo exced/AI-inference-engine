@@ -1,45 +1,3 @@
-/** Creates a tile with the given coordinates
- * @param {int} column
- * @param {int} row
- */
-function createTile(column, row) {
-    return {column:column, row:row};
-}
-
-/** Returns true if two tiles are equal, else false
- * @param {Tile} tile1
- * @param {Tile} tile2
- */
-function equalTiles(tile1, tile2) {
-    return tile1.column == tile2.column && tile1.row == tile2.row;
-}
-
-/** Returns the list of reachable tiles
- * @param {Tile} tile
- */
-function reachableTiles(tile){
-    var reachable = [];
-    var oldColumn = tile.column;
-    var oldRow = tile.row;
-    reachable.push({column:oldColumn-1, row:oldRow}, {column:oldColumn, row:oldRow-1},
-    {column:oldColumn+1, row:oldRow}, {column:oldColumn, row:oldRow+1});
-    for(var i=0; i<reachable.length; i++) {
-        if (!validTile(reachable[i])) {
-            reachable.splice(i, 1);
-            i--;
-        }
-    }
-    return reachable;
-}
-
-/** Returns true if the tile position is valid, else false
- * @param {Tile} tile
- */
-function validTile(tile) {
-    return tile.column >= 0 && tile.row >=0 && tile.column < nbCols && tile.row < nbRows ;
-}
-
-// =================================== KNOWLEDGES ===================================
 /** Adds a knowledge to the table
  * @param {Tile} tile
  * @param {int} probMonster
@@ -107,6 +65,3 @@ function isHole(tile) {
 function isSafe(tile) {
     return !isMonster() && !isHole();
 }
-
-var tile = {column:0, row:0}
-console.log(reachableTiles(tile));
