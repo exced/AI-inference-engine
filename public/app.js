@@ -1,7 +1,8 @@
 /* Vue.config.debug = true; */
 
 /* init grid GUI */
-var gContext;
+var gContext; // context game
+var gContextK; // context knowledges
 var height = screen.availHeight;
 var nbRows = 10;
 var nbCols = 10;
@@ -21,6 +22,8 @@ var nbHoles = ~~((nbCols * nbRows) / 50);
 var holes = [];
 var clouds = [];
 var portal = {};
+/* inference vars */
+var knowledges; // { column, row, probMonster, probHole, passedOn }
 
 var game = new Vue({
     el: '#scores',
@@ -71,8 +74,8 @@ function drawCharacters(position) {
     var imgMonster = new Image();
     imgMonster.onload = function () {
         monsters.map(function (pos) {
-            var x = (pos.column * kPieceWidth);
-            var y = (pos.row * kPieceHeight);
+            var x = (pos.column * kPixelWidth);
+            var y = (pos.row * kPixelHeight);
             gContext.drawImage(imgMonster, x, y, kPieceWidth, kPieceHeight)
         })
     }
@@ -109,24 +112,33 @@ function drawCharacters(position) {
     imgCloud.src = "./assets/cloud.png";
 }
 
-function drawBoard() {
-    gContext.clearRect(0, 0, kPixelWidth, kPixelHeight);
-    gContext.beginPath();
+function drawKnowledges() {
+    gContextK.font = "10px Arial";
+    knowledges.map(function (k) {
+        var x = kPieceWidth * (1 + k.column) - kPieceWidth;
+        var y = kPieceHeight * (1 + k.row);
+        console.log("x " + x + " y " + y);
+        gContextK.fillText(k.probMonster, x, y);
+    })
+}
+
+function drawBoard(context) {
+    context.clearRect(0, 0, kPixelWidth, kPixelHeight);
+    context.beginPath();
     /* vertical lines */
     for (var x = 0; x <= kPixelWidth; x += kPieceWidth) {
-        gContext.moveTo(0.5 + x, 0);
-        gContext.lineTo(0.5 + x, kPixelHeight);
+        context.moveTo(0.5 + x, 0);
+        context.lineTo(0.5 + x, kPixelHeight);
     }
     /* horizontal lines */
     for (var y = 0; y <= kPixelHeight; y += kPieceHeight) {
-        gContext.moveTo(0, 0.5 + y);
-        gContext.lineTo(kPixelWidth, 0.5 + y);
+        context.moveTo(0, 0.5 + y);
+        context.lineTo(kPixelWidth, 0.5 + y);
     }
-    gContext.closePath();
+    context.closePath();
     /* draw */
-    gContext.strokeStyle = 'black';
-    gContext.stroke();
-    drawCharacters(currentPosition);
+    context.strokeStyle = 'black';
+    context.stroke();
 }
 
 function stepGame(newPosition) {
@@ -139,7 +151,10 @@ function stepGame(newPosition) {
         currentPosition = newPosition;
         pathUser.push(newPosition);
     }
-    drawBoard();
+    drawBoard(gContext);
+    drawBoard(gContextK);
+    drawCharacters(currentPosition);
+    drawKnowledges();
 }
 
 document.addEventListener("keydown", function (e) {
@@ -197,6 +212,15 @@ function posCardinal(pos) {
         { column: pos.column - 1, row: pos.row },
         { column: pos.column + 1, row: pos.row }
     ];
+}
+
+function accessible_from(pos) {
+    var accessibles = [];
+    posCardinal(pos).map(function (p) {
+        isInsideGrid(p)
+        accessibles.push(p)
+    })
+    return accessibles;
 }
 
 function newGame() {
@@ -264,15 +288,21 @@ function newGame() {
     canvas.height = kPixelHeight;
     var context = canvas.getContext("2d");
     gContext = context;
-    drawBoard();
+    drawBoard(gContext);
+    drawCharacters(currentPosition);
 
     /* canvasKnowledges */
-    var canvas = document.getElementById('canvasK');
-    canvas.width = kPixelWidth;
-    canvas.height = kPixelHeight;
-    var context = canvas.getContext("2d");
-    gContext = context;
-    drawBoardK();    
+    var canvasK = document.getElementById('canvasK');
+    canvasK.width = kPixelWidth;
+    canvasK.height = kPixelHeight;
+    var contextK = canvasK.getContext("2d");
+    gContextK = contextK;
+    drawBoard(gContextK);
+    drawKnowledges();
+
+    /* init knowledges */
+    var knowledges = null;
+    knowledges = new Database(knowledges);
 
     /* timer */
     startTimer(nbRows);
@@ -282,41 +312,29 @@ function WindowLoad(event) {
     newGame();
 }
 
-/* rules */
-const cloudStr = 'cloud';
-const rainbowStr = 'rainbow';
-const monsterStr = 'monster';
-const holeStr = 'hole';
-const emptyStr = 'empty';
-var rulesText = [];
-var knowledges = [];
-
 /* inference AI */
-
 /* get and execute best action for current state with inference engine */
 function stepInfer() {
-    /* choose action */
-    pos = queryAccessibleFrom(currentPosition);
     /* decision making */
-    var newPosition = pos[0];
+    var newPosition = null;
     stepGame(newPosition);
 
     /* update knowledges, try to infer and update score */
     if (holes.findMatch(newPosition, eqPos)) {
         game.score -= 10 * nbRows * nbCols;
-        addRule(ruleAt(holeStr, newPosition));
+
     }
     else if (clouds.findMatch(newPosition, eqPos)) {
-        addRule(ruleAt(cloudStr, newPosition));
+
     }
     else if (monsters.findMatch(newPosition, eqPos)) {
         game.score -= 10 * nbRows * nbCols;
-        addRule(ruleAt(monsterStr, newPosition));
+
     }
     else if (rainbows.findMatch(newPosition, eqPos)) {
-        addRule(ruleAt(rainbowStr, newPosition));
+
     } else {
-        addRule(ruleAt(emptyStr, newPosition));
+
     }
 }
 
