@@ -1,11 +1,3 @@
-// Number of columns
-const nbColumns = 3;
-// Number of rows
-const nbRows = 3;
-// Knowledge table
-const knowledgeTable = [];
-
-// ====================================== TILES =====================================
 /** Creates a tile with the given coordinates
  * @param {int} column
  * @param {int} row
@@ -44,7 +36,7 @@ function reachableTiles(tile){
  * @param {Tile} tile
  */
 function validTile(tile) {
-    return tile.column >= 0 && tile.row >=0 && tile.column < nbColumns && tile.row < nbRows ;
+    return tile.column >= 0 && tile.row >=0 && tile.column < nbCols && tile.row < nbRows ;
 }
 
 // =================================== KNOWLEDGES ===================================

@@ -48,6 +48,10 @@ else if (window.attachEvent) { // IE
     window.attachEvent('onload', WindowLoad);
 }
 
+/** Returns true if the tile position is valid, else false
+ * @param {int} column
+ * @param {int} row
+ */
 function isInsideGrid(position) {
     return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
 }
