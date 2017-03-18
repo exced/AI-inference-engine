@@ -54,14 +54,14 @@ function isInsideGrid(position) {
 
 function drawCharacters(position) {
     /* unicorn */
-    var imgUnicorn = new Image();
-    imgUnicorn.onload = function () {
+    var imgHero = new Image();
+    imgHero.onload = function () {
         // transform row / column to grid coords
         var x = (position.column * kPieceWidth);
         var y = (position.row * kPieceHeight);
-        gContext.drawImage(imgUnicorn, x, y, kPieceWidth, kPieceHeight)
+        gContext.drawImage(imgHero, x, y, kPieceWidth, kPieceHeight)
     }
-    imgUnicorn.src = "./assets/unicorn.png";
+    imgHero.src = "./assets/hero.png";
     /* portal */
     var imgPortal = new Image();
     imgPortal.onload = function () {
@@ -101,15 +101,15 @@ function drawCharacters(position) {
     }
     imgHole.src = "./assets/hole.png";
     /* clouds */
-    var imgCloud = new Image();
-    imgCloud.onload = function () {
+    var imgWind = new Image();
+    imgWind.onload = function () {
         clouds.map(function (pos) {
             var x = (pos.column * kPieceWidth);
             var y = (pos.row * kPieceHeight);
-            gContext.drawImage(imgCloud, x, y, kPieceWidth, kPieceHeight)
+            gContext.drawImage(imgWind, x, y, kPieceWidth, kPieceHeight)
         })
     }
-    imgCloud.src = "./assets/cloud.png";
+    imgWind.src = "./assets/wind.png";
 }
 
 function drawKnowledges() {
