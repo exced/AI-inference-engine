@@ -23,7 +23,8 @@ var holes = [];
 var clouds = [];
 var portal = {};
 /* inference vars */
-var knowledges = []; // { column, row, probMonster, probHole, passedOn }
+var knowledges = [];
+var rules = [];
 
 var game = new Vue({
     el: '#scores',
@@ -78,8 +79,8 @@ function drawCharacters(position) {
     var imgMonster = new Image();
     imgMonster.onload = function () {
         monsters.map(function (pos) {
-            var x = (pos.column * kPixelWidth);
-            var y = (pos.row * kPixelHeight);
+            var x = (pos.column * kPieceWidth);
+            var y = (pos.row * kPieceHeight);
             gContext.drawImage(imgMonster, x, y, kPieceWidth, kPieceHeight)
         })
     }
@@ -305,6 +306,9 @@ function newGame() {
     drawBoard(gContextK);
     drawKnowledges();
 
+    /* rules + knowledges */
+
+
     /* timer */
     startTimer(nbRows);
 }
@@ -337,9 +341,4 @@ function stepInfer() {
     } else {
 
     }
-}
-
-/* probabilities */
-function bayes() {
-
 }
