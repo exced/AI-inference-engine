@@ -1,3 +1,8 @@
+// Knowledge table
+var knowledgeTable = [];
+// Rules list
+var rulesList = [];
+
 /** Adds a knowledge to the table
  * @param {Tile} tile
  * @param {int} probMonster
