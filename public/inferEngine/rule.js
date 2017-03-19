@@ -9,7 +9,7 @@ function Rule(conditions, actions) {
 }
 
 /**
- * 
+ * assert all conditions true
  * @param {Knowledge} knowledges
  */
 function assertC(knowledges) {
@@ -31,7 +31,7 @@ function apply(knowledges) {
 }
 
 /**
- * 
+ * infer a new rule from another one
  * @param {Rule} other 
  */
 function infer(other) {
