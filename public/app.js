@@ -23,8 +23,8 @@ var holes = [];
 var clouds = [];
 var portal = {};
 /* inference vars */
-var knowledges = [];
-var rules = [];
+var facts;
+var ruleEngine;
 
 var game = new Vue({
     el: '#scores',
@@ -220,12 +220,9 @@ function posCardinal(pos) {
 }
 
 function accessible_from(pos) {
-    var accessibles = [];
-    posCardinal(pos).map(function (p) {
-        isInsideGrid(p)
-        accessibles.push(p)
-    })
-    return accessibles;
+    return pos.filter((p) => {
+        return isInsideGrid(p);
+    });
 }
 
 function newGame() {
@@ -306,8 +303,75 @@ function newGame() {
     drawBoard(gContextK);
     drawKnowledges();
 
-    /* rules + knowledges */
+    /* rules + facts */
+    var rules = [
+        {
+            name: "cardinal positions",
+            priority: 1,
+            condition: function (pre) {
+                return true;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                return posCardinal(this.facts.currentPosition);
+            }
+        },
+        {
+            name: "is inside grid",
+            priority: 2,
+            condition: function (pre) {
+                return true;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                return post.filter((p) => {
+                    return isInsideGrid(p);
+                })
+            }
+        },
+        {
+            name: "monster around rainbow",
+            priority: 3,
+            condition: function (pre) {
+                return this.probRainbow >= 1;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                var uncertain = post.filter((p1) => {
+                    return p1.probMonster != 1;
+                });
+                uncertain.map((p) => {
+                    p.probMonster = uncertain.length / post.length;
+                });
+                return post;
+            }
+        },
+        {
+            name: "hole around cloud",
+            priority: 3,
+            condition: function (pre) {
+                return this.probCloud >= 1;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                var uncertain = post.filter((p1) => {
+                    return p1.probHole != 1;
+                });
+                uncertain.map((p) => {
+                    p.probHole = uncertain.length / post.length;
+                });
+                return post;
+            }
+        }
+    ];
 
+    ruleEngine = new RuleEngine(rules);
+
+    facts = new Facts([], eqPos);
 
     /* timer */
     startTimer(nbRows);
@@ -317,28 +381,36 @@ function WindowLoad(event) {
     newGame();
 }
 
-/* inference AI */
-/* get and execute best action for current state with inference engine */
+/* get and execute best action for current fact with inference engine */
 function stepInfer() {
-    /* decision making */
-    var newPosition = null;
-    stepGame(newPosition);
-
-    /* update knowledges, try to infer and update score */
-    if (holes.findMatch(newPosition, eqPos)) {
+    var fact = {
+        column: currentPosition.column,
+        row: currentPosition.row
+    }
+    /* update certain fact */
+    if (holes.findMatch(currentPosition, eqPos)) {
         game.score -= 10 * nbRows * nbCols;
-
-    }
-    else if (clouds.findMatch(newPosition, eqPos)) {
-
-    }
-    else if (monsters.findMatch(newPosition, eqPos)) {
+        fact.probHole = 1;
+    } else if (clouds.findMatch(currentPosition, eqPos)) {
+        fact.probCloud = 1;
+    } else if (monsters.findMatch(currentPosition, eqPos)) {
         game.score -= 10 * nbRows * nbCols;
-
-    }
-    else if (rainbows.findMatch(newPosition, eqPos)) {
-
+        fact.probMonster = 1;
+    } else if (rainbows.findMatch(currentPosition, eqPos)) {
+        fact.probRainbow = 1;
+    } else if (eqPos(currentPosition, portal)) {
+        newGame();
     } else {
-
+        fact.probEmpty = 1;
     }
+    /* score */
+    fact.score = game.score;
+    /* update facts */
+    facts.add(fact);
+    console.log("facts " + JSON.stringify(facts));
+    /* infer */
+    var newPosition = ruleEngine.execute(facts, function (data) {
+        console.log("ruleEngine execute : " + JSON.stringify(data));
+    });
+    //stepGame(newPosition);
 }
