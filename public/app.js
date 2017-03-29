@@ -67,12 +67,6 @@ function isInsideGrid(position) {
     return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
 }
 
-function drawImage(ctx, img, column, row) {
-    var x = (column * kPieceWidth);
-    var y = (row * kPieceHeight);
-    gContext.drawImage(images[img], x, y, kPieceWidth, kPieceHeight);
-}
-
 function drawCharacters(position) {
     /* hero */
     drawImage(gContext, "hero", position.column, position.row);
@@ -363,25 +357,6 @@ function newGame() {
 
     /* timer */
     startTimer(nbRows);
-}
-
-function loadImages(sources, callback) {
-    var nb = 0;
-    var loaded = 0;
-    var imgs = {};
-    for (var i in sources) {
-        if (sources.hasOwnProperty(i)) {
-            nb++;
-            imgs[i] = new Image();
-            imgs[i].src = sources[i];
-            imgs[i].onload = function () {
-                loaded++;
-                if (loaded == nb) {
-                    callback(imgs);
-                }
-            }
-        }
-    }
 }
 
 function WindowLoad(event) {
