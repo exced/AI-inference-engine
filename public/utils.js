@@ -33,3 +33,10 @@ Array.prototype.indexOf = function (token, eq) {
     }
     return -1;
 }
+
+/**
+ * copy string attributes
+ */
+Object.prototype.copy = function () {
+    return JSON.parse(JSON.stringify(this));
+}

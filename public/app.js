@@ -1,6 +1,16 @@
 /* Vue.config.debug = true; */
 
 /* init grid GUI */
+var sprites = {
+    grey: "./assets/grey.png",
+    hero: "./assets/hero.png",
+    hole: "./assets/hole.png",
+    monster: "./assets/monster.png",
+    portal: "./assets/portal.png",
+    rainbow: "./assets/rainbow.png",
+    cloud: "./assets/wind.png"
+}
+var images = {};
 var gContext; // context game
 var gContextK; // context knowledges
 var height = screen.availHeight;
@@ -57,64 +67,33 @@ function isInsideGrid(position) {
     return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
 }
 
+function drawImage(ctx, img, column, row) {
+    var x = (column * kPieceWidth);
+    var y = (row * kPieceHeight);
+    gContext.drawImage(images[img], x, y, kPieceWidth, kPieceHeight);
+}
+
 function drawCharacters(position) {
     /* hero */
-    var imgHero = new Image();
-    imgHero.onload = function () {
-        // transform row / column to grid coords
-        var x = (position.column * kPieceWidth);
-        var y = (position.row * kPieceHeight);
-        gContext.drawImage(imgHero, x, y, kPieceWidth, kPieceHeight)
-    }
-    imgHero.src = "./assets/hero.png";
+    drawImage(gContext, "hero", position.column, position.row);
     /* portal */
-    var imgPortal = new Image();
-    imgPortal.onload = function () {
-        var x = (portal.column * kPieceWidth);
-        var y = (portal.row * kPieceHeight);
-        gContext.drawImage(imgPortal, x, y, kPieceWidth, kPieceHeight)
-    }
-    imgPortal.src = "./assets/portal.png";
+    drawImage(gContext, "portal", portal.column, portal.row);
     /* monsters */
-    var imgMonster = new Image();
-    imgMonster.onload = function () {
-        monsters.map(function (pos) {
-            var x = (pos.column * kPieceWidth);
-            var y = (pos.row * kPieceHeight);
-            gContext.drawImage(imgMonster, x, y, kPieceWidth, kPieceHeight)
-        })
-    }
-    imgMonster.src = "./assets/monster.png";
+    monsters.map(function (pos) {
+        drawImage(gContext, "monster", pos.column, pos.row);
+    });
     /* rainbows */
-    var imgRainbow = new Image();
-    imgRainbow.onload = function () {
-        rainbows.map(function (pos) {
-            var x = (pos.column * kPieceWidth);
-            var y = (pos.row * kPieceHeight);
-            gContext.drawImage(imgRainbow, x, y, kPieceWidth, kPieceHeight)
-        })
-    }
-    imgRainbow.src = "./assets/rainbow.png";
+    rainbows.map(function (pos) {
+        drawImage(gContext, "rainbow", pos.column, pos.row);
+    });
     /* holes */
-    var imgHole = new Image();
-    imgHole.onload = function () {
-        holes.map(function (pos) {
-            var x = (pos.column * kPieceWidth);
-            var y = (pos.row * kPieceHeight);
-            gContext.drawImage(imgHole, x, y, kPieceWidth, kPieceHeight)
-        })
-    }
-    imgHole.src = "./assets/hole.png";
+    holes.map(function (pos) {
+        drawImage(gContext, "hole", pos.column, pos.row);
+    });
     /* clouds */
-    var imgCloud = new Image();
-    imgCloud.onload = function () {
-        clouds.map(function (pos) {
-            var x = (pos.column * kPieceWidth);
-            var y = (pos.row * kPieceHeight);
-            gContext.drawImage(imgCloud, x, y, kPieceWidth, kPieceHeight)
-        })
-    }
-    imgCloud.src = "./assets/wind.png";
+    clouds.map(function (pos) {
+        drawImage(gContext, "cloud", pos.column, pos.row);
+    });
 }
 
 function drawKnowledges() {
@@ -304,6 +283,7 @@ function newGame() {
     drawKnowledges();
 
     /* rules + facts */
+    /*
     var rules = [
         {
             name: "cardinal positions",
@@ -366,9 +346,63 @@ function newGame() {
                 });
                 return post;
             }
-        }
+        },
+        {
+            name: "tile is safe",
+            priority: 3,
+            condition: function (pre) {
+                return (this.probCloud == 0) && (this.probMonster == 0);
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                post.probEmpty = 1;
+                return post;
+            }
+        },        
     ];
-
+    */
+    var rules = [
+        {
+            name: "hello world",
+            priority: 1,
+            condition: function (pre) {
+                return true;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                this.hello = "world";
+                return true;
+            }
+        },
+        {
+            name: "its me",
+            priority: 1,
+            condition: function (pre) {
+                return true;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                this.name = "me";
+                return true;
+            }
+        }/*,
+        {
+            name: "dummy",
+            priority: 1,
+            condition: function (pre) {
+                return true;
+            },
+            triggerOn: true,
+            on: false,
+            actions: function (post) {
+                return true;
+            }
+        },  */
+    ];
+    /* rule engine */
     ruleEngine = new RuleEngine(rules);
 
     facts = new Facts([], eqPos);
@@ -377,8 +411,30 @@ function newGame() {
     startTimer(nbRows);
 }
 
+function loadImages(sources, callback) {
+    var nb = 0;
+    var loaded = 0;
+    var imgs = {};
+    for (var i in sources) {
+        if (sources.hasOwnProperty(i)) {
+            nb++;
+            imgs[i] = new Image();
+            imgs[i].src = sources[i];
+            imgs[i].onload = function () {
+                loaded++;
+                if (loaded == nb) {
+                    callback(imgs);
+                }
+            }
+        }
+    }
+}
+
 function WindowLoad(event) {
-    newGame();
+    loadImages(sprites, function (imgs) {
+        images = imgs;
+        newGame();
+    });
 }
 
 /* get and execute best action for current fact with inference engine */
@@ -407,10 +463,13 @@ function stepInfer() {
     fact.score = game.score;
     /* update facts */
     facts.add(fact);
-    console.log("facts " + JSON.stringify(facts));
     /* infer */
+    ruleEngine.infer(facts);
+    console.log("Infered Rule : " + JSON.stringify(ruleEngine));
+    /* take the best */
+    /*
     var newPosition = ruleEngine.execute(facts, function (data) {
         console.log("ruleEngine execute : " + JSON.stringify(data));
-    });
+    });*/
     //stepGame(newPosition);
 }
