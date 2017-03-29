@@ -283,7 +283,6 @@ function newGame() {
     drawKnowledges();
 
     /* rules + facts */
-    /*
     var rules = [
         {
             name: "cardinal positions",
@@ -356,45 +355,7 @@ function newGame() {
             }
         },        
     ];
-    */
-    var rules = [
-        {
-            name: "hello world",
-            priority: 1,
-            condition: function (pre) {
-                return true;
-            },
-            triggerOn: true,
-            actions: function (post) {
-                this.hello = "world";
-                return true;
-            }
-        },
-        {
-            name: "if hello world !!",
-            priority: 1,
-            condition: function (pre) {
-                //return this.hello == "world";
-                return false;
-            },
-            triggerOn: true,
-            actions: function (post) {
-                this.hastriggered = "YES";
-                return true;
-            }
-        },
-        {
-            name: "dummy",
-            priority: 1,
-            condition: function (pre) {
-                return true;
-            },
-            triggerOn: true,
-            actions: function (post) {
-                return true;
-            }
-        }
-    ];
+    
     /* rule engine */
     ruleEngine = new RuleEngine(rules);
 
