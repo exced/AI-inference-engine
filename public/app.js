@@ -292,7 +292,6 @@ function newGame() {
                 return true;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 return posCardinal(this.facts.currentPosition);
             }
@@ -304,7 +303,6 @@ function newGame() {
                 return true;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 return post.filter((p) => {
                     return isInsideGrid(p);
@@ -318,7 +316,6 @@ function newGame() {
                 return this.probRainbow >= 1;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 var uncertain = post.filter((p1) => {
                     return p1.probMonster != 1;
@@ -336,7 +333,6 @@ function newGame() {
                 return this.probCloud >= 1;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 var uncertain = post.filter((p1) => {
                     return p1.probHole != 1;
@@ -354,7 +350,6 @@ function newGame() {
                 return (this.probCloud == 0) && (this.probMonster == 0);
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 post.probEmpty = 1;
                 return post;
@@ -370,25 +365,24 @@ function newGame() {
                 return true;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 this.hello = "world";
                 return true;
             }
         },
         {
-            name: "its me",
+            name: "if hello world !!",
             priority: 1,
             condition: function (pre) {
-                return true;
+                //return this.hello == "world";
+                return false;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
-                this.name = "me";
+                this.hastriggered = "YES";
                 return true;
             }
-        }/*,
+        },
         {
             name: "dummy",
             priority: 1,
@@ -396,11 +390,10 @@ function newGame() {
                 return true;
             },
             triggerOn: true,
-            on: false,
             actions: function (post) {
                 return true;
             }
-        },  */
+        }
     ];
     /* rule engine */
     ruleEngine = new RuleEngine(rules);
@@ -464,8 +457,10 @@ function stepInfer() {
     /* update facts */
     facts.add(fact);
     /* infer */
-    ruleEngine.infer(facts);
-    console.log("Infered Rule : " + JSON.stringify(ruleEngine));
+    var rs = ruleEngine.infer(facts);
+    for (var i = 0; i < rs.length; i++) {
+        console.log(JSON.stringify(rs[i]));
+    }
     /* take the best */
     /*
     var newPosition = ruleEngine.execute(facts, function (data) {
