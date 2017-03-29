@@ -429,32 +429,34 @@ function WindowLoad(event) {
         newGame();
     });
 }
-
+var Cert = { RAINBOW : 0, MONSTERS : 1 , HOLES : 2, VOID : 3 , PORTAL : 4, CLOUDS : 5};
 /* get and execute best action for current fact with inference engine */
 function stepInfer() {
     var fact = {
         column: currentPosition.column,
-        row: currentPosition.row
+        row: currentPosition.row,
+        certitudes: []
     }
+
+    game.score -= 1;
+
     /* update certain fact */
     if (holes.findMatch(currentPosition, eqPos)) {
         game.score -= 10 * nbRows * nbCols;
-        fact.probHole = 1;
+        fact.certitudes.push(Cert.HOLES);
     } else if (clouds.findMatch(currentPosition, eqPos)) {
-        fact.probCloud = 1;
+        fact.certitudes.push(Cert.CLOUDS);
     } else if (monsters.findMatch(currentPosition, eqPos)) {
         game.score -= 10 * nbRows * nbCols;
-        fact.probMonster = 1;
+        fact.certitudes.push(Cert.MONSTERS);
     } else if (rainbows.findMatch(currentPosition, eqPos)) {
-        fact.probRainbow = 1;
+        fact.certitudes.push(Cert.RAINBOW);
     } else if (eqPos(currentPosition, portal)) {
         newGame();
     } else {
-        fact.probEmpty = 1;
+        fact.certitudes.push(Cert.VOID);
     }
-    /* score */
-    fact.score = game.score;
-    /* update facts */
+    /* update facts database */
     facts.add(fact);
     /* infer */
     var rs = ruleEngine.infer(facts);
