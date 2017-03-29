@@ -399,7 +399,7 @@ function stepInfer() {
         certitudes: []
     }
 
-    game.score -= 1;
+    game.score--;
 
     /* update certain fact */
     if (holes.findMatch(currentPosition, eqPos)) {
@@ -413,6 +413,7 @@ function stepInfer() {
     } else if (rainbows.findMatch(currentPosition, eqPos)) {
         fact.certitudes.push(Cert.RAINBOW);
     } else if (eqPos(currentPosition, portal)) {
+        game.score += 10 * nbCols * nbRows;
         newGame();
     } else {
         fact.certitudes.push(Cert.VOID);
@@ -420,14 +421,17 @@ function stepInfer() {
     /* update facts database */
     facts.add(fact);
     /* infer */
-    var rs = ruleEngine.infer(facts);
+    var newPosition = ruleEngine.infer(facts);
     for (var i = 0; i < rs.length; i++) {
         console.log(JSON.stringify(rs[i]));
     }
-    /* take the best */
-    /*
-    var newPosition = ruleEngine.execute(facts, function (data) {
-        console.log("ruleEngine execute : " + JSON.stringify(data));
-    });*/
-    //stepGame(newPosition);
+
+    if (isInsideGrid(newPosition)) {
+        currentPosition = newPosition;
+        pathUser.push(newPosition);
+    }
+    drawBoard(gContext);
+    drawBoard(gContextK);
+    drawCharacters(currentPosition);
+    drawKnowledges();
 }
