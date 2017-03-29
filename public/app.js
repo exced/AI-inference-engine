@@ -420,14 +420,6 @@ function stepInfer() {
     /* update facts database */
     facts.add(fact);
     /* infer */
-    var rs = ruleEngine.infer(facts);
-    for (var i = 0; i < rs.length; i++) {
-        console.log(JSON.stringify(rs[i]));
-    }
-    /* take the best */
-    /*
-    var newPosition = ruleEngine.execute(facts, function (data) {
-        console.log("ruleEngine execute : " + JSON.stringify(data));
-    });*/
-    //stepGame(newPosition);
+    var newPosition = ruleEngine.infer(facts);
+    stepGame(newPosition);
 }

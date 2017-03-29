@@ -21,11 +21,29 @@ function actions(fact, facts) {
 }
 
 /**
+ * prioritize
+ */
+function prioritize(rules) {
+    var res = [];
+    for (var i = 1; i < rules.length; i++) {
+        var pack = rules.filter(function(rule) {
+            return rule.priority == i;
+        });
+        if (pack.length >= 1) {
+            res.push(pack);
+        }
+    }
+    return res;
+}
+
+/**
  * infer new rules. Forward chaining
  * @param {Fact}
  */
 RuleEngine.prototype.infer = function (facts) {
-    for (var i = 0; i < this.rules.length; i++) {
+    /* prioritize rules */
+    var rulesByPriority = prioritize(this.rules);
+    for (var i = 0; i < rulesByPriority.length; i++) {
         
     }
 }
