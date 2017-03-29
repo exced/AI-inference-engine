@@ -44,6 +44,8 @@ RuleEngine.prototype.infer = function (facts) {
     /* prioritize rules */
     var rulesByPriority = prioritize(this.rules);
     for (var i = 0; i < rulesByPriority.length; i++) {
-        
+        if (rule.condition(facts)) {
+            var v = rule.actions();
+        }
     }
 }

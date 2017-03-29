@@ -2,7 +2,6 @@
 
 /* init grid GUI */
 var sprites = {
-    grey: "./assets/grey.png",
     hero: "./assets/hero.png",
     hole: "./assets/hole.png",
     monster: "./assets/monster.png",
@@ -291,7 +290,7 @@ function newGame() {
                 return true;
             },
             triggerOn: true,
-            actions: function (post) {
+            actions: function (facts, pos) {
                 return posCardinal(this.facts.currentPosition);
             }
         },
@@ -302,7 +301,7 @@ function newGame() {
                 return true;
             },
             triggerOn: true,
-            actions: function (post) {
+            actions: function (facts, pos) {
                 return post.filter((p) => {
                     return isInsideGrid(p);
                 })
@@ -312,50 +311,58 @@ function newGame() {
             name: "monster around rainbow",
             priority: 3,
             condition: function (pre) {
-                return this.probRainbow >= 1;
+                return pre.length >= 1;
             },
             triggerOn: true,
-            actions: function (post) {
-                var uncertain = post.filter((p1) => {
-                    return p1.probMonster != 1;
-                });
-                uncertain.map((p) => {
-                    p.probMonster = uncertain.length / post.length;
-                });
-                return post;
+            actions: function (facts, pos) {
+                if (!facts[pos.row][pos.column].contains(Cert.MONSTERS)) {
+                    var nb = 0;
+                    for (var i = 0; i < facts.length; i++) {
+                        if (this.facts.certitudes == Cert.RAINBOW) {
+                            nb++;
+                        }
+                    }
+                    if (nb == facts.length) {
+                        facts[pos.row][pos.column].certitudes.push(Cert.MONSTERS);
+                    }
+                }
+                return nb / facts.length;
             }
         },
         {
             name: "hole around cloud",
             priority: 3,
             condition: function (pre) {
-                return this.probCloud >= 1;
+                return pre.length >= 1;
             },
             triggerOn: true,
-            actions: function (post) {
-                var uncertain = post.filter((p1) => {
-                    return p1.probHole != 1;
-                });
-                uncertain.map((p) => {
-                    p.probHole = uncertain.length / post.length;
-                });
-                return post;
+            actions: function (facts, pos) {
+                var nb = 0;
+                for (var i = 0; i < facts.length; i++) {
+                    if (this.facts.certitudes == Cert.CLOUDS) {
+                        nb++;
+                    }
+                }
+                if (nb == facts.length) {
+                    facts[pos.row][pos.column].certitudes.push(Cert.HOLES);
+                }
+                return nb / facts.length;
             }
         },
         {
-            name: "tile is safe",
-            priority: 3,
+            name: "max probability",
+            priority: 4,
             condition: function (pre) {
-                return (this.probCloud == 0) && (this.probMonster == 0);
+                return pre.length >= 1;
             },
             triggerOn: true,
-            actions: function (post) {
-                post.probEmpty = 1;
-                return post;
+            actions: function (facts, pos) {
+                
+                return;
             }
-        },        
+        },
     ];
-    
+
     /* rule engine */
     ruleEngine = new RuleEngine(rules);
 
@@ -390,7 +397,7 @@ function WindowLoad(event) {
         newGame();
     });
 }
-var Cert = { RAINBOW : 0, MONSTERS : 1 , HOLES : 2, VOID : 3 , PORTAL : 4, CLOUDS : 5};
+var Cert = { RAINBOWS: 0, MONSTERS: 1, HOLES: 2, VOID: 3, CLOUDS: 4 };
 /* get and execute best action for current fact with inference engine */
 function stepInfer() {
     var fact = {
@@ -411,7 +418,7 @@ function stepInfer() {
         game.score -= 10 * nbRows * nbCols;
         fact.certitudes.push(Cert.MONSTERS);
     } else if (rainbows.findMatch(currentPosition, eqPos)) {
-        fact.certitudes.push(Cert.RAINBOW);
+        fact.certitudes.push(Cert.RAINBOWS);
     } else if (eqPos(currentPosition, portal)) {
         newGame();
     } else {
