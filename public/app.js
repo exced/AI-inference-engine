@@ -1,22 +1,5 @@
 // Vue.config.debug = true;
 
-if (window.addEventListener) { // Mozilla, Netscape, Firefox
-    window.addEventListener('load', WindowLoad, false);
-}
-else if (window.attachEvent) { // IE
-    window.attachEvent('onload', WindowLoad);
-}
-
-/**
- * Create and run a new game
- * @param {Event} window event 
- */
-function WindowLoad(event) {
-    var game = newGame();
-    game.init();
-    game.show();
-}
-
 var gameVue = new Vue({
     el: '#scores',
     data: {
@@ -33,16 +16,22 @@ var gameVue = new Vue({
     }
 });
 
-var gameComponents = {
-    monster: new Component(),
-};
-var gameDatas = {
-    gameEnded: false,
-    initPos: {},
-    currentPosition: initPos,
-    pathUser: []
+if (window.addEventListener) { // Mozilla, Netscape, Firefox
+    window.addEventListener('load', WindowLoad, false);
 }
-var game = new Game(gameGrid, gameVue);
+else if (window.attachEvent) { // IE
+    window.attachEvent('onload', WindowLoad);
+}
+
+/**
+ * Create and run a new game
+ * @param {Event} window event 
+ */
+function WindowLoad(event) {
+    var game = newGame(10, 10, 0.02, 0.02);
+    game.init();
+    game.show();
+}
 
 function startTimer(duration) {
     var timer = duration, minutes, seconds;
@@ -59,8 +48,17 @@ function startTimer(duration) {
     }, 1000);
 }
 
-function newGame() {
+/**
+ * init and create a new game 
+ * @param {Number} rows 
+ * @param {Number} columns 
+ * @param {Number} monsterRatio : ratio = quantity / (rows * columns)
+ * @param {Number} holesRatio 
+ */
+function newGame(rows, columns, monstersRatio, holesRatio) {
+    /* game */
     var sprites = {
+        grey: "./assets/grey.png",
         hero: "./assets/hero.png",
         hole: "./assets/hole.png",
         monster: "./assets/monster.png",
@@ -68,73 +66,27 @@ function newGame() {
         rainbow: "./assets/rainbow.png",
         cloud: "./assets/wind.png"
     }
-    /* game vars */
-    initPos = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
-    currentPosition = initPos;
-    pathUser = [];
-    nbMonsters = ~~((nbCols * nbRows) / 50);
-    monsters = [];
-    rainbows = [];
-    nbHoles = ~~((nbCols * nbRows) / 50);
-    holes = [];
-    clouds = [];
-    gameEnded = false;
-    knowledges = [];
-
-    /* portal position */
-    do { // Not on initPos
-        rand = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
-    } while (eqPos(rand, initPos))
-    portal = { column: rand.column, row: rand.row };
-
-    /* generate random monsters */
-    for (var i = 0; i < nbMonsters; i++) {
-        var rand;
-        do { // Not on initPos || portal || monsters
-            rand = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
-        } while (eqPos(rand, initPos) || eqPos(rand, portal) || monsters.findMatch(rand, eqPos))
-        monsters.push({ column: rand.column, row: rand.row });
+    /* canvas */
+    var gameCanvas = document.getElementById('canvas');
+    /* datas */
+    var gameDatas = {
+        gameEnded: false,
+        path: []
     }
-
-    /* generate random holes */
-    for (var i = 0; i < nbHoles; i++) {
-        var rand;
-        do { // Not on initPos || portal || monsters || holes
-            rand = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
-        } while (eqPos(rand, initPos) || eqPos(rand, portal) || monsters.findMatch(rand, eqPos) || holes.findMatch(rand, eqPos))
-        holes.push({ column: rand.column, row: rand.row });
-    }
-
-    /* generate rainbows : N/S/W/E for each monsters */
-    monsters.map(function (pos) {
-        var card = posCardinal(pos);
-        card.map(function (c) {
-            if (isInsideGrid(c) && !eqPos(c, initPos) && !eqPos(c, portal) && !monsters.findMatch(c, eqPos)
-                && !holes.findMatch(c, eqPos) && !clouds.findMatch(c, eqPos) && !rainbows.findMatch(c, eqPos)) {
-                rainbows.push(c);
-            }
-        })
-    })
-
-    /* generate clouds : N/S/W/E for each holes */
-    holes.map(function (pos) {
-        var card = posCardinal(pos);
-        card.map(function (c) {
-            if (isInsideGrid(c) && !eqPos(c, initPos) && !eqPos(c, portal) && !monsters.findMatch(c, eqPos)
-                && !holes.findMatch(c, eqPos) && !clouds.findMatch(c, eqPos) && !rainbows.findMatch(c, eqPos)) {
-                clouds.push(c);
-            }
-        })
-    })
-
-    /* canvasGame */
-    var canvas = document.getElementById('canvas');
-    canvas.width = kPixelWidth;
-    canvas.height = kPixelHeight;
-    var context = canvas.getContext("2d");
-    gContext = context;
-    drawBoard(gContext);
-    drawCharacters(currentPosition);
+    var game = new Game(gameCanvas, rows, columns, gameDatas, gameUnits);
+    /* add components */
+    game.addComponentsAtRandom("hero", 1, false);
+    game.addComponentsAtRandom("portal", 1, false);
+    game.addComponentsAtRandom("monster", monstersRatio * (rows * columns), false);
+    /* rainbows around monster */
+    game.getUnitsOf("monster").map((c) => {
+        addComponentAround("rainbow", c.row, c.column, false);
+    });
+    game.addComponentsAtRandom("hole", holesRatio * (rows * columns), false);
+    /* clouds around hole */
+    game.getUnitsOf("hole").map((c) => {
+        addComponentAround("cloud", c.row, c.column, false);
+    });
 
     /* canvasKnowledges */
     var canvasK = document.getElementById('canvasK');
@@ -221,7 +173,7 @@ function newGame() {
             },
             triggerOn: true,
             actions: function (facts, pos) {
-                
+
                 return;
             }
         },

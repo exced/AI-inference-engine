@@ -44,3 +44,28 @@ function getRandomIntInclusive(min, max) {
     max = ~~(max);
     return ~~(Math.random() * (max - min + 1)) + min;
 }
+
+/**
+ * init matrix and fill with zero
+ * @param {*} rows 
+ * @param {*} cols 
+ */
+function zero2D(rows, cols) {
+    var array = [], row = [];
+    while (cols--) row.push(0);
+    while (rows--) array.push(row.slice());
+    return array;
+}
+
+/**
+ * init matrix and fill it with input
+ * @param {*} rows 
+ * @param {*} cols 
+ * @param {Object} input
+ */
+function fill2D(rows, cols, fill) {
+    var array = [], row = [];
+    while (cols--) row.push(fill);
+    while (rows--) array.push(row.slice());
+    return array;
+}

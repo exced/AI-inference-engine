@@ -12,38 +12,26 @@
     <meta name="viewport" content="width=1024" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
 </head>
-
 <body>
-    <div class="container">
-        <div class="row scores well well-lg" id="scores">
-            <div class="col-md-4">
-                <h2>timer: {{timer}}</h2>
-            </div>
-            <div class="col-md-4">
-                <h3>score: {{score}}</h3>
-            </div>
-            <div class="col-md-4">
-                <button @click="stepInfer()" type="button" class="btn btn-success">step</button>
-            </div>
-        </div>
-    </div>
-    </div>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-xs-6">
-                <h1>Facts</h1>
-                <div class="jumbotron animated">
-                    <canvas id="canvasK"></canvas>
+    <div class="container main">
+        <div id="scores">
+            <div class="row well well-lg" id="statusMessage">
+                <div class="col-md-4">
+
+                </div>
+                <div class="col-md-4">
+                    <h2>timer: {{timer}}</h2>
+                    <h3>score: {{score()}}</h3>
+                    <button v-if="gameEnded" @click="newGame()" type="button" class="btn btn-success">New Game</button>
+                </div>
+                <div class="col-md-4">
+                    <button @click="stepInfer()" type="button" class="btn btn-success">step</button>
                 </div>                
             </div>
-            <div class="col-xs-6">
-                <h1>Game</h1>
-                <div class="jumbotron animated">
-                    <canvas id="canvas"></canvas>
-                </div>
+            <div class="jumbotron animated">
+                <canvas id="canvas"></canvas>
             </div>
         </div>
-    </div>
 </body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/1.0.14/vue.js"></script>
 <script src="./app.js" type="text/javascript"></script>
