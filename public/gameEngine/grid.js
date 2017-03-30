@@ -8,11 +8,11 @@
  * @param {Context} canvas context
  */
 function Grid(rows, columns, context) {
-    this.nbRows = nbRows;
-    this.nbColumn = nbColumn;
-    this.height = screen.availHeight;
-    this.kPieceWidth = ~~((height - 250) / nbCols);
-    this.kPieceHeight = ~~((height - 250) / nbRows);
+    this.rows = rows;
+    this.columns = columns;
+    this.screenHeight = screen.availHeight;
+    this.kPieceWidth = ~~((this.screenHeight - 250) / nbCols);
+    this.kPieceHeight = ~~((this.screenHeight - 250) / nbRows);
     this.context = context;
 }
 /**
@@ -41,12 +41,27 @@ Grid.prototype.drawBoard = function () {
     this.context.stroke();
 }
 
-function drawImage(ctx, img, column, row, nbSprites) {
-    var imageWidth = tileWidth / nbSprites;
-    var imageHeight = tileHeight / nbSprites;
-    var x = (column * kPieceWidth);
-    var y = (row * kPieceHeight);
-    gContext.drawImage(images[img], x, y, imageWidth, imageHeight);
+/**
+ * @param {Image} image to draw
+ * @param {Number} column
+ * @param {Number} row
+ */
+Grid.prototype.drawImage = function (img, column, row) {
+    var x = (column * this.kPieceWidth);
+    var y = (row * this.kPieceHeight);
+    this.context.drawImage(img, x, y, this.kPieceWidth, this.kPieceHeight);
+}
+
+/**
+ * @param {String} text to draw
+ * @param {Number} column
+ * @param {Number} row
+ */
+Grid.prototype.drawText = function (text, column, row) {
+    this.context.font = "10px Arial";
+    var x = this.kPieceWidth * (1 + column) - this.kPieceWidth;
+    var y = this.kPieceHeight * (1 + row);
+    this.context.fillText(text, x, y);
 }
 
 /** Returns true if the tile position is valid, else false
@@ -57,6 +72,10 @@ Grid.prototype.isInsideGrid = function (position) {
     return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
 }
 
+/**
+ * Returns the Cardinal positions : North / South / West / East
+ * @param {Object}
+ */
 function posCardinal(pos) {
     return [
         { column: pos.column, row: pos.row - 1 },
@@ -66,8 +85,12 @@ function posCardinal(pos) {
     ];
 }
 
-function accessible_from(pos) {
-    return pos.filter((p) => {
-        return isInsideGrid(p);
-    });
+/**
+ * @param {Boolean}
+ */
+Grid.prototype.randomPos = function () {
+    return {
+        column: getRandomIntInclusive(0, this.column - 1),
+        row: getRandomIntInclusive(0, this.row - 1)
+    }
 }

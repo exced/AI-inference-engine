@@ -1,8 +1,21 @@
 // Vue.config.debug = true;
 
-/* inference vars */
-var facts;
-var ruleEngine;
+if (window.addEventListener) { // Mozilla, Netscape, Firefox
+    window.addEventListener('load', WindowLoad, false);
+}
+else if (window.attachEvent) { // IE
+    window.attachEvent('onload', WindowLoad);
+}
+
+/**
+ * Create and run a new game
+ * @param {Event} window event 
+ */
+function WindowLoad(event) {
+    var game = newGame();
+    game.init();
+    game.show();
+}
 
 var gameVue = new Vue({
     el: '#scores',
@@ -31,57 +44,6 @@ var gameDatas = {
 }
 var game = new Game(gameGrid, gameVue);
 
-if (window.addEventListener) { // Mozilla, Netscape, Firefox
-    window.addEventListener('load', WindowLoad, false);
-}
-else if (window.attachEvent) { // IE
-    window.attachEvent('onload', WindowLoad);
-}
-
-/**
- * load game resources, and run a new game
- * @param {*} event 
- */
-function WindowLoad(event) {
-    loadImages(sprites, function (imgs) {
-        images = imgs;
-        newGame();
-    });
-}
-
-function drawCharacters(position) {
-    /* hero */
-    drawImage(gContext, "hero", position.column, position.row);
-    /* portal */
-    drawImage(gContext, "portal", portal.column, portal.row);
-    /* monsters */
-    monsters.map(function (pos) {
-        drawImage(gContext, "monster", pos.column, pos.row);
-    });
-    /* rainbows */
-    rainbows.map(function (pos) {
-        drawImage(gContext, "rainbow", pos.column, pos.row);
-    });
-    /* holes */
-    holes.map(function (pos) {
-        drawImage(gContext, "hole", pos.column, pos.row);
-    });
-    /* clouds */
-    clouds.map(function (pos) {
-        drawImage(gContext, "cloud", pos.column, pos.row);
-    });
-}
-
-function drawKnowledges() {
-    gContextK.font = "10px Arial";
-    knowledges.map(function (k) {
-        var x = kPieceWidth * (1 + k.column) - kPieceWidth;
-        var y = kPieceHeight * (1 + k.row);
-        console.log("x " + x + " y " + y);
-        gContextK.fillText(k.probMonster, x, y);
-    })
-}
-
 function startTimer(duration) {
     var timer = duration, minutes, seconds;
     var t = setInterval(function () {
@@ -105,7 +67,7 @@ function newGame() {
         portal: "./assets/portal.png",
         rainbow: "./assets/rainbow.png",
         cloud: "./assets/wind.png"
-    }    
+    }
     /* game vars */
     initPos = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
     currentPosition = initPos;
