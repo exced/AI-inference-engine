@@ -35,8 +35,12 @@ Array.prototype.indexOf = function (token, eq) {
 }
 
 /**
- * copy string attributes
+ * 
+ * @param {*} min 
+ * @param {*} max 
  */
-Object.prototype.copy = function () {
-    return JSON.parse(JSON.stringify(this));
+function getRandomIntInclusive(min, max) {
+    min = Math.ceil(min);
+    max = ~~(max);
+    return ~~(Math.random() * (max - min + 1)) + min;
 }

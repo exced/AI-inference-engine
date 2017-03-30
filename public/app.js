@@ -1,33 +1,9 @@
-/* Vue.config.debug = true; */
+// Vue.config.debug = true;
 
-/* init grid GUI */
-var images = {};
-var gContext; // context game
-var gContextK; // context knowledges
-var height = screen.availHeight;
-var nbRows = 10;
-var nbCols = 10;
-var kPieceWidth = ~~((height - 250) / nbCols);
-var kPieceHeight = ~~((height - 250) / nbRows);
-var kPixelWidth = 1 + (nbCols * this.kPieceWidth);
-var kPixelHeight = 1 + (nbRows * this.kPieceHeight);
-/* game vars */
-var gameEnded = false;
-var initPos = {};
-var currentPosition = initPos;
-var pathUser = [];
-var nbMonsters = ~~((nbCols * nbRows) / 50);
-var monsters = [];
-var rainbows = [];
-var nbHoles = ~~((nbCols * nbRows) / 50);
-var holes = [];
-var clouds = [];
-var portal = {};
 /* inference vars */
 var facts;
 var ruleEngine;
 
-var gameGrid = new Grid();
 var gameVue = new Vue({
     el: '#scores',
     data: {
@@ -63,18 +39,10 @@ else if (window.attachEvent) { // IE
 }
 
 /**
- * init a game and play
+ * load game resources, and run a new game
  * @param {*} event 
  */
 function WindowLoad(event) {
-    var sprites = {
-        hero: "./assets/hero.png",
-        hole: "./assets/hole.png",
-        monster: "./assets/monster.png",
-        portal: "./assets/portal.png",
-        rainbow: "./assets/rainbow.png",
-        cloud: "./assets/wind.png"
-    }    
     loadImages(sprites, function (imgs) {
         images = imgs;
         newGame();
@@ -114,54 +82,6 @@ function drawKnowledges() {
     })
 }
 
-function drawBoard(context) {
-    context.clearRect(0, 0, kPixelWidth, kPixelHeight);
-    context.beginPath();
-    /* vertical lines */
-    for (var x = 0; x <= kPixelWidth; x += kPieceWidth) {
-        context.moveTo(0.5 + x, 0);
-        context.lineTo(0.5 + x, kPixelHeight);
-    }
-    /* horizontal lines */
-    for (var y = 0; y <= kPixelHeight; y += kPieceHeight) {
-        context.moveTo(0, 0.5 + y);
-        context.lineTo(kPixelWidth, 0.5 + y);
-    }
-    context.closePath();
-    /* draw */
-    context.strokeStyle = 'black';
-    context.stroke();
-}
-
-document.addEventListener("keydown", function (e) {
-    if (!gameEnded) {
-        var newPosition = { column: currentPosition.column, row: currentPosition.row };
-        if (e.keyCode == 39) { // Right
-            newPosition.column += 1;
-        }
-        if (e.keyCode == 40) { // Down
-            newPosition.row += 1;
-        }
-        if (e.keyCode == 39) { // Up
-            newPosition.row -= 1;
-        }
-        if (e.keyCode == 37) { // Left
-            newPosition.column -= 1;
-        }
-        stepGame(newPosition);
-    }
-}, false);
-
-function getRandomIntInclusive(min, max) {
-    min = Math.ceil(min);
-    max = ~~(max);
-    return ~~(Math.random() * (max - min + 1)) + min;
-}
-
-function endGame() {
-    gameEnded = true;
-}
-
 function startTimer(duration) {
     var timer = duration, minutes, seconds;
     var t = setInterval(function () {
@@ -177,26 +97,15 @@ function startTimer(duration) {
     }, 1000);
 }
 
-function eqPos(pos1, pos2) {
-    return pos1.column == pos2.column && pos1.row == pos2.row
-}
-
-function posCardinal(pos) {
-    return [
-        { column: pos.column, row: pos.row - 1 },
-        { column: pos.column, row: pos.row + 1 },
-        { column: pos.column - 1, row: pos.row },
-        { column: pos.column + 1, row: pos.row }
-    ];
-}
-
-function accessible_from(pos) {
-    return pos.filter((p) => {
-        return isInsideGrid(p);
-    });
-}
-
 function newGame() {
+    var sprites = {
+        hero: "./assets/hero.png",
+        hole: "./assets/hole.png",
+        monster: "./assets/monster.png",
+        portal: "./assets/portal.png",
+        rainbow: "./assets/rainbow.png",
+        cloud: "./assets/wind.png"
+    }    
     /* game vars */
     initPos = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
     currentPosition = initPos;
