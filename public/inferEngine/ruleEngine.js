@@ -38,7 +38,7 @@ function prioritize(rules) {
 
 /**
  * infer new rules. Forward chaining
- * @param {Fact}
+ * @param {Object} facts
  */
 RuleEngine.prototype.infer = function (facts) {
     /* prioritize rules */

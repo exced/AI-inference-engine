@@ -1,6 +1,12 @@
 // Vue.config.debug = true;
+var rows = 10;
+var columns = 10;
+var game;
+var infer;
+var facts;
+var Cert = { RAINBOW: 0, MONSTER: 1, CLOUD: 2, HOLE: 3, VOID: 4 };
 
-var gameVue = new Vue({
+var vue = new Vue({
     el: '#scores',
     data: {
         /* scoreboard */
@@ -25,12 +31,15 @@ else if (window.attachEvent) { // IE
 
 /**
  * Create and run a new game
- * @param {Event} window event 
+ * @param {Event} window event
  */
 function WindowLoad(event) {
-    var game = newGame(10, 10, 0.02, 0.02);
+    game = newGame(rows+1, columns+1);
     game.init();
     game.show();
+    startTimer(game.rows);
+    facts = fill2D(game.rows, game.columns, { certitudes: [] });
+    ruleEngine = newRuleEngine();
 }
 
 function startTimer(duration) {
@@ -40,10 +49,9 @@ function startTimer(duration) {
         seconds = parseInt(timer % 60, 10);
         minutes = minutes < 10 ? "0" + minutes : minutes;
         seconds = seconds < 10 ? "0" + seconds : seconds;
-        game.timer = minutes + ":" + seconds;
-        if (--timer < 0 || game.gameEnded) {
+        vue.timer = minutes + ":" + seconds;
+        if (--timer < 0) {
             clearInterval(t);
-            endGame();
         }
     }, 1000);
 }
@@ -67,36 +75,25 @@ function newGame(rows, columns, monstersRatio, holesRatio) {
         cloud: "./assets/wind.png"
     }
     /* canvas */
-    var gameCanvas = document.getElementById('canvas');
-    /* datas */
-    var gameDatas = {
-        gameEnded: false,
-        path: []
-    }
-    var game = new Game(gameCanvas, rows, columns, gameDatas, gameUnits);
+    var canvas = document.getElementById('canvas');
+    var game = new Game(canvas, rows, columns, sprites);
     /* add components */
-    game.addComponentsAtRandom("hero", 1, false);
-    game.addComponentsAtRandom("portal", 1, false);
-    game.addComponentsAtRandom("monster", monstersRatio * (rows * columns), false);
+    game.addUnitsAtRandom("hero", 1, false);
+    game.addUnitsAtRandom("portal", 1, false);
+    game.addUnitsAtRandom("monster", ~~(rows * columns) / 50, false);
     /* rainbows around monster */
-    game.getUnitsOf("monster").map((c) => {
-        addComponentAround("rainbow", c.row, c.column, false);
+    game.getUnits("monster").map((c) => {
+        addUnitAround("rainbow", c.row, c.column, false);
     });
-    game.addComponentsAtRandom("hole", holesRatio * (rows * columns), false);
+    game.addUnitsAtRandom("hole", ~~(rows * columns) / 50, false);
     /* clouds around hole */
-    game.getUnitsOf("hole").map((c) => {
-        addComponentAround("cloud", c.row, c.column, false);
+    game.getUnits("hole").map((c) => {
+        addUnitAround("cloud", c.row, c.column, false);
     });
+    return game;
+}
 
-    /* canvasKnowledges */
-    var canvasK = document.getElementById('canvasK');
-    canvasK.width = kPixelWidth;
-    canvasK.height = kPixelHeight;
-    var contextK = canvasK.getContext("2d");
-    gContextK = contextK;
-    drawBoard(gContextK);
-    drawKnowledges();
-
+function newRuleEngine() {
     /* rules + facts */
     var rules = [
         {
@@ -178,63 +175,35 @@ function newGame(rows, columns, monstersRatio, holesRatio) {
             }
         },
     ];
-
-    /* rule engine */
-    ruleEngine = new RuleEngine(rules);
-
-    facts = new Facts([], eqPos);
-
-    /* timer */
-    startTimer(nbRows);
+    return new RuleEngine(rules);
 }
 
-
-var Cert = { RAINBOWS: 0, MONSTERS: 1, HOLES: 2, VOID: 3, CLOUDS: 4 };
-/* get and execute best action for current fact with inference engine */
+/* add fact */
 function stepInfer() {
-    var fact = {
-        column: currentPosition.column,
-        row: currentPosition.row,
-        certitudes: []
-    }
-
-    game.score--;
-
+    var hero = game.getUnits("hero")[0];
+    var row = hero.row;
+    var column = hero.column;
+    var certitudes = [];
     /* update certain fact */
-    if (holes.findMatch(currentPosition, eqPos)) {
-        game.score -= 10 * nbRows * nbCols;
-        fact.certitudes.push(Cert.HOLES);
-    } else if (clouds.findMatch(currentPosition, eqPos)) {
-        fact.certitudes.push(Cert.CLOUDS);
-    } else if (monsters.findMatch(currentPosition, eqPos)) {
-        game.score -= 10 * nbRows * nbCols;
-        fact.certitudes.push(Cert.MONSTERS);
-    } else if (rainbows.findMatch(currentPosition, eqPos)) {
-        fact.certitudes.push(Cert.RAINBOWS);
-    } else if (eqPos(currentPosition, portal)) {
-        game.score += 10 * nbCols * nbRows;
-        newGame();
+    if (game.getUnitsAt("hole", row, column).length >= 0) {
+        vue.score -= 10 * game.rows * game.columns;
+        certitudes.push(Cert.HOLE);
+    } else if (game.getUnitsAt("cloud", row, column).length >= 0) {
+        certitudes.push(Cert.CLOUD);
+    } else if (game.getUnitsAt("monster", row, column).length >= 0) {
+        vue.score -= 10 * game.rows * game.columns;
+        certitudes.push(Cert.MONSTER);
+    } else if (game.getUnitsAt("rainbow", row, column).length >= 0) {
+        certitudes.push(Cert.RAINBOW);
+    } else if (game.getUnitsAt("portal", row, column).length >= 0) {
+        vue.score += 10 * game.rows * game.columns;
+        newGame(game.rows, game.columns);
     } else {
-        fact.certitudes.push(Cert.VOID);
+        certitudes.push(Cert.VOID);
     }
     /* update facts database */
-    facts.add(fact);
+    facts[row][column].certitudes = certitudes;
     /* infer */
     var newPosition = ruleEngine.infer(facts);
-<<<<<<< HEAD
     stepGame(newPosition);
-=======
-    for (var i = 0; i < rs.length; i++) {
-        console.log(JSON.stringify(rs[i]));
-    }
-
-    if (isInsideGrid(newPosition)) {
-        currentPosition = newPosition;
-        pathUser.push(newPosition);
-    }
-    drawBoard(gContext);
-    drawBoard(gContextK);
-    drawCharacters(currentPosition);
-    drawKnowledges();
->>>>>>> 9d3e528da98d86acd8ce106a8e31be0ee61860b4
 }

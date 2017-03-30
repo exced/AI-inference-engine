@@ -1,15 +1,14 @@
 /**
- * Grid based game engine
+ * Grid based game engine.
  */
 
 /**
  * @param {Number} rows number
  * @param {Number} columns number
  * @param {Context} canvas context
- * @param {Object} Datas of the game that are not drawn
  * @param {Object} sprites
  */
-function Game(canvas, rows, columns, data, sprites) {
+function Game(canvas, rows, columns, sprites) {
     this.canvas = canvas;
     this.screenHeight = screen.availHeight;
     this.kPieceWidth = ~~((this.screenHeight - 250) / columns);
@@ -19,10 +18,38 @@ function Game(canvas, rows, columns, data, sprites) {
     this.canvas.width = this.kPixelWidth;
     this.canvas.height = this.kPixelHeight;    
     this.context = this.canvas.getContext("2d");    
-    this.data = data;
     this.sprites = sprites;
     this.images = [];
     this.units = fill2D(rows, columns, []);    
+}
+
+/**
+ * aggregate all units by name
+ */
+Game.prototype.getUnits = function (name) {
+    var agg = [];
+    for (var r = 0; r < this.rows; r++) {
+        for (var c = 0; c < this.columns; c++) {
+            agg.concat(this.getUnitsAt(r, c));
+        }
+    }
+    return agg;
+}
+
+/**
+ * filter units by name and position
+ */
+Game.prototype.getUnitsAt = function (name, row, column) {
+    return this.getAllUnitsAt(row, column).filter((u) => {
+        return u.name == name;
+    })
+}
+
+/**
+ * aggregate all units at given position
+ */
+Game.prototype.getAllUnitsAt = function (row, column) {
+    return this.units[row][column];
 }
 
 /**
@@ -63,6 +90,31 @@ Game.prototype.addUnitsAtRandom = function (name, quantity, superposable) {
         this.addUnitAtRandom(name, superposable);
     }
 }
+
+Game.prototype.posCardinal = function (row, column) {
+    return [
+        { row: row - 1, column: column },
+        { row: row + 1, column: column },
+        { row: row, column: column - 1 },
+        { row: row, column: column + 1 }
+    ];
+}
+
+Game.prototype.accessible_from = function (row, column) {
+    return this.posCardinal(row, column).filter((pos) => {
+        return isInsideGrid(p.row, p.column);
+    });
+}
+
+/**
+ * add units around given position
+ */
+Game.prototype.addUnitAround = function (name, row, column, superposable) {
+    this.accessible_from(row, column).map((pos) => {
+        this.addUnitAt(name, pos.row, pow.column, superposable);
+    })
+}
+
 /**
  * remove unit at given position
  */
@@ -70,6 +122,24 @@ Game.prototype.removeUnitAt = function (name, row, column) {
     this.units[row][column] = this.units[row][column].filter((u) => {
         return u.name != name;
     })
+}
+
+/** is position inside grid ?
+ * @param {int} column
+ * @param {int} row
+ */
+Game.prototype.isInsideGrid = function (row, column) {
+    return (row >= 0 && row < this.rows) && (column >= 0 && column < this.columns);
+}
+
+/**
+ * move Component from old position to new position
+ */
+Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
+    if (this.isInsideGrid(newRow, newCol)) {
+        this.removeUnitAt(name, oldRow, oldCol);
+        this.addUnitAt(name, oldRow, oldCol);
+    }
 }
 
 /** Loads all images
@@ -112,24 +182,6 @@ Game.prototype.show = function () {
     this.drawAllUnits();
 }
 
-/**
- * move Component from old position to new position
- */
-Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
-    if (this.isInsideGrid(newRow, newCol)) {
-        this.removeUnitAt(name, oldRow, oldCol);
-        this.addUnitAt(name, oldRow, oldCol);
-    }
-}
-
-/** is position inside grid ?
- * @param {int} column
- * @param {int} row
- */
-Game.prototype.isInsideGrid = function (row, column) {
-    return (row >= 0 && row < this.rows) && (column >= 0 && column < this.columns);
-}
-
 Game.prototype.drawBoard = function () {
     context.clearRect(0, 0, this.kPixelWidth, this.kPixelHeight);
     context.beginPath();
@@ -166,7 +218,7 @@ Game.prototype.drawImage = function (img, row, column) {
 Game.prototype.drawAllUnits = function () {
     for (var r = 0; r < this.rows; r++) {
         for (var c = 0; c < this.columns; c++) {
-            this.getUnitsAt(r, c).map((u) => {
+            this.getAllUnitsAt(r, c).map((u) => {
                 this.drawImage(this.images[u.name], r, c);
             })
         }
