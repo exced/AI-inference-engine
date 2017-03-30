@@ -1,14 +1,6 @@
 /* Vue.config.debug = true; */
 
 /* init grid GUI */
-var sprites = {
-    hero: "./assets/hero.png",
-    hole: "./assets/hole.png",
-    monster: "./assets/monster.png",
-    portal: "./assets/portal.png",
-    rainbow: "./assets/rainbow.png",
-    cloud: "./assets/wind.png"
-}
 var images = {};
 var gContext; // context game
 var gContextK; // context knowledges
@@ -35,7 +27,8 @@ var portal = {};
 var facts;
 var ruleEngine;
 
-var game = new Vue({
+var gameGrid = new Grid();
+var gameVue = new Vue({
     el: '#scores',
     data: {
         /* scoreboard */
@@ -51,6 +44,17 @@ var game = new Vue({
     }
 });
 
+var gameComponents = {
+    monster: new Component(),
+};
+var gameDatas = {
+    gameEnded: false,
+    initPos: {},
+    currentPosition: initPos,
+    pathUser: []
+}
+var game = new Game(gameGrid, gameVue);
+
 if (window.addEventListener) { // Mozilla, Netscape, Firefox
     window.addEventListener('load', WindowLoad, false);
 }
@@ -58,12 +62,23 @@ else if (window.attachEvent) { // IE
     window.attachEvent('onload', WindowLoad);
 }
 
-/** Returns true if the tile position is valid, else false
- * @param {int} column
- * @param {int} row
+/**
+ * init a game and play
+ * @param {*} event 
  */
-function isInsideGrid(position) {
-    return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
+function WindowLoad(event) {
+    var sprites = {
+        hero: "./assets/hero.png",
+        hole: "./assets/hole.png",
+        monster: "./assets/monster.png",
+        portal: "./assets/portal.png",
+        rainbow: "./assets/rainbow.png",
+        cloud: "./assets/wind.png"
+    }    
+    loadImages(sprites, function (imgs) {
+        images = imgs;
+        newGame();
+    });
 }
 
 function drawCharacters(position) {
@@ -116,22 +131,6 @@ function drawBoard(context) {
     /* draw */
     context.strokeStyle = 'black';
     context.stroke();
-}
-
-function stepGame(newPosition) {
-    game.score--;
-    if (eqPos(newPosition, portal)) { // End of the game
-        game.score += 10 * nbCols * nbRows;
-        endGame();
-    }
-    if (isInsideGrid(newPosition)) {
-        currentPosition = newPosition;
-        pathUser.push(newPosition);
-    }
-    drawBoard(gContext);
-    drawBoard(gContextK);
-    drawCharacters(currentPosition);
-    drawKnowledges();
 }
 
 document.addEventListener("keydown", function (e) {
@@ -198,7 +197,7 @@ function accessible_from(pos) {
 }
 
 function newGame() {
-    /* reset game vars */
+    /* game vars */
     initPos = { column: getRandomIntInclusive(0, nbCols - 1), row: getRandomIntInclusive(0, nbRows - 1) };
     currentPosition = initPos;
     pathUser = [];
@@ -366,12 +365,7 @@ function newGame() {
     startTimer(nbRows);
 }
 
-function WindowLoad(event) {
-    loadImages(sprites, function (imgs) {
-        images = imgs;
-        newGame();
-    });
-}
+
 var Cert = { RAINBOWS: 0, MONSTERS: 1, HOLES: 2, VOID: 3, CLOUDS: 4 };
 /* get and execute best action for current fact with inference engine */
 function stepInfer() {

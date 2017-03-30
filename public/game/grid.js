@@ -1,51 +1,38 @@
 /**
- * @param {number} nbRow 
- * @param {number} nbColumn
+ * Canvas abstract
  */
-function Grid(nbRow, nbColumn) {
-    this.nbRow = nbRow;
+
+/**
+ * @param {number} number of rows 
+ * @param {number} number of columns
+ * @param {number} screen available height
+ * @param {Context} canvas context
+ */
+function Grid(rows, columns, height, context) {
+    this.nbRows = nbRows;
     this.nbColumn = nbColumn;
-    this.sprites = [];
-    this.knowledges = []
-    // Initializes the sprites and knwoledges matrix
-    for (var i=0; i<nbRow; i++) {
-        this.sprites.push([]);
-        this.knowledges.push([]);
-        for (var j=0; j< nbColumn; j++) {
-            this.sprites[i].push([]);
-            this.knowledges.push();
-        }
-    }
-
-    // ============================================ GUI ===========================================
-    /** Adds a sprite
-     * @param {number} row 
-     * @param {number} column 
-     * @param {Image} sprite 
-     */
-    function addSprite(row, column, sprite) {
-        this.sprites[row][column].push(sprite);
-    }
-
-    /** Draws all the sprites of a tile
-     * @param {number} row 
-     * @param {number} column 
-     */
-    function drawTile(row, column) {
-        var sprites = this.sprites[row][column];
-        sprites.map(function (sprite) {
-            drawImage(gContext, sprite, column, row, nbSprites);
-        });
-    }
+    this.height = height;
+    this.kPieceWidth = ~~((height - 250) / nbCols);
+    this.kPieceHeight = ~~((height - 250) / nbRows);
+    this.context = context;
+}
 
     /** Draws the grid
      */
     function drawGrid() {
-        for(var i=0; i<this.nbRow; i++) {
-            for (var j=0; j<this.nbColumn ; j++) {
+        for (var i = 0; i < this.nbRow; i++) {
+            for (var j = 0; j < this.nbColumn; j++) {
                 this.drawTile(i, j);
             }
         }
+    }
+
+    /** Returns true if the tile position is valid, else false
+     * @param {int} column
+     * @param {int} row
+     */
+    function isInsideGrid(position) {
+        return (position.row >= 0 && position.row < nbRows) && (position.column >= 0 && position.column < nbCols);
     }
 
     // ======================================== KNOWLEDGES ========================================
@@ -92,9 +79,6 @@ function loadImages(sources, callback) {
     }
 }
 
-var height = screen.availHeight;
-var tileWidth = ~~((height - 250) / nbCols);
-var tileHeight = ~~((height - 250) / nbRows);
 function drawImage(ctx, img, column, row, nbSprites) {
     var imageWidth = tileWidth / nbSprites;
     var imageHeight = tileHeight / nbSprites;
