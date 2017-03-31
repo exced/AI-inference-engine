@@ -20,7 +20,15 @@ function Game(images, canvas, rows, columns) {
     this.canvas.width = this.kPixelWidth;
     this.canvas.height = this.kPixelHeight;
     this.context = this.canvas.getContext("2d");
-    this.units = fill2DObject(rows, columns);
+    this.units = fill2D(rows, columns, {});
+}
+
+/** is position inside grid ?
+ * @param {int} column
+ * @param {int} row
+ */
+Game.prototype.isInsideGrid = function (row, column) {
+    return (row >= 0 && row < this.rows) && (column >= 0 && column < this.columns);
 }
 
 /**
@@ -36,7 +44,6 @@ Game.prototype.getUnits = function (name) {
             }
         }
     }
-    console.log(agg);
     return agg;
 }
 
@@ -134,14 +141,6 @@ Game.prototype.removeUnitAt = function (name, row, column) {
     this.units[row][column] = this.units[row][column].filter((u) => {
         return u.name != name;
     })
-}
-
-/** is position inside grid ?
- * @param {int} column
- * @param {int} row
- */
-Game.prototype.isInsideGrid = function (row, column) {
-    return (row >= 0 && row < this.rows) && (column >= 0 && column < this.columns);
 }
 
 /**

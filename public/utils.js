@@ -70,12 +70,12 @@ function fill2D(rows, cols, fill) {
     return array;
 }
 
-function fill2DObject(rows, cols) {
+function fill2D(rows, cols, fill) {
     var arr = []; 
     for (var i = 0; i < rows; i++) {
         arr[i] = []; 
         for (var j = 0; j < cols; j++) {
-            arr[i][j] = {};
+            arr[i][j] = JSON.parse(JSON.stringify(fill));
         }
     }
     return arr;

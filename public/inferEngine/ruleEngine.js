@@ -25,7 +25,7 @@ function actions(fact, facts) {
  */
 function prioritize(rules) {
     var res = [];
-    for (var i = 1; i < rules.length; i++) {
+    for (var i = 0; i < rules.length; i++) {
         var pack = rules.filter(function(rule) {
             return rule.priority == i;
         });
@@ -41,11 +41,14 @@ function prioritize(rules) {
  * @param {Object} facts
  */
 RuleEngine.prototype.infer = function (facts) {
+    var visiting = [];
     /* prioritize rules */
     var rulesByPriority = prioritize(this.rules);
+    console.log(rulesByPriority);
+    var flow;
     for (var i = 0; i < rulesByPriority.length; i++) {
-        if (rule.condition(facts)) {
-            var v = rule.actions();
+        if (rule.condition(facts, flow)) {
+            flow = rule.actions();
         }
     }
 }
