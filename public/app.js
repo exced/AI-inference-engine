@@ -1,7 +1,6 @@
 // Vue.config.debug = true;
-var rows = 10;
-var columns = 10;
-var game;
+var rows = 2;
+var columns = 2;
 var infer;
 var facts;
 var Cert = { RAINBOW: 0, MONSTER: 1, CLOUD: 2, HOLE: 3, VOID: 4 };
@@ -29,17 +28,51 @@ else if (window.attachEvent) { // IE
     window.attachEvent('onload', WindowLoad);
 }
 
+/** Loads all images
+ * @param {String} sources
+ * @param {function} callback
+ */
+function loadImages(sources, callback) {
+    var nb = 0;
+    var loaded = 0;
+    var imgs = {};
+    for (var i in sources) {
+        if (sources.hasOwnProperty(i)) {
+            nb++;
+            imgs[i] = new Image();
+            imgs[i].src = sources[i];
+            imgs[i].onload = function () {
+                loaded++;
+                if (loaded == nb) {
+                    callback(imgs);
+                }
+            }
+        }
+    }
+}
+
 /**
  * Create and run a new game
  * @param {Event} window event
  */
 function WindowLoad(event) {
-    game = newGame(rows+1, columns+1);
-    game.init();
-    game.show();
-    startTimer(game.rows);
-    facts = fill2D(game.rows, game.columns, { certitudes: [] });
-    ruleEngine = newRuleEngine();
+    /* game */
+    var sprites = {
+        hero: "./assets/hero.png",
+        hole: "./assets/hole.png",
+        monster: "./assets/monster.png",
+        portal: "./assets/portal.png",
+        rainbow: "./assets/rainbow.png",
+        cloud: "./assets/wind.png"
+    }
+    loadImages(sprites, function (imgs) {
+        var images = imgs;
+        game = newGame(images, rows + 1, columns + 1);
+        game.show();
+        startTimer(game.rows);
+        facts = fill2D(game.rows, game.columns, { certitudes: [] });
+        ruleEngine = newRuleEngine();
+    });
 }
 
 function startTimer(duration) {
@@ -63,32 +96,22 @@ function startTimer(duration) {
  * @param {Number} monsterRatio : ratio = quantity / (rows * columns)
  * @param {Number} holesRatio 
  */
-function newGame(rows, columns, monstersRatio, holesRatio) {
-    /* game */
-    var sprites = {
-        grey: "./assets/grey.png",
-        hero: "./assets/hero.png",
-        hole: "./assets/hole.png",
-        monster: "./assets/monster.png",
-        portal: "./assets/portal.png",
-        rainbow: "./assets/rainbow.png",
-        cloud: "./assets/wind.png"
-    }
+function newGame(images, rows, columns) {
     /* canvas */
     var canvas = document.getElementById('canvas');
-    var game = new Game(canvas, rows, columns, sprites);
+    var game = new Game(images, canvas, rows, columns);
     /* add components */
-    game.addUnitsAtRandom("hero", 1, false);
+    game.addUnitsAtRandom("hero", 1, true);
     game.addUnitsAtRandom("portal", 1, false);
-    game.addUnitsAtRandom("monster", ~~(rows * columns) / 50, false);
+    game.addUnitsAtRandom("monster", (~~(rows * columns) / 50), false);
     /* rainbows around monster */
     game.getUnits("monster").map((c) => {
-        addUnitAround("rainbow", c.row, c.column, false);
+        addUnitAround("rainbow", c.row, c.column, true);
     });
     game.addUnitsAtRandom("hole", ~~(rows * columns) / 50, false);
     /* clouds around hole */
     game.getUnits("hole").map((c) => {
-        addUnitAround("cloud", c.row, c.column, false);
+        addUnitAround("cloud", c.row, c.column, true);
     });
     return game;
 }
@@ -179,7 +202,7 @@ function newRuleEngine() {
 }
 
 /* add fact */
-function stepInfer() {
+function stepInfer(game) {
     var hero = game.getUnits("hero")[0];
     var row = hero.row;
     var column = hero.column;

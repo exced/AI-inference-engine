@@ -6,21 +6,21 @@
  * @param {Number} rows number
  * @param {Number} columns number
  * @param {Context} canvas context
- * @param {Object} sprites
  */
-function Game(canvas, rows, columns, sprites) {
+function Game(images, canvas, rows, columns) {
+    this.images = images;
     this.canvas = canvas;
+    this.rows = rows;
+    this.columns = columns;
     this.screenHeight = screen.availHeight;
     this.kPieceWidth = ~~((this.screenHeight - 250) / columns);
     this.kPieceHeight = ~~((this.screenHeight - 250) / rows);
     this.kPixelWidth = 1 + (columns * this.kPieceWidth);
     this.kPixelHeight = 1 + (rows * this.kPieceHeight);
     this.canvas.width = this.kPixelWidth;
-    this.canvas.height = this.kPixelHeight;    
-    this.context = this.canvas.getContext("2d");    
-    this.sprites = sprites;
-    this.images = [];
-    this.units = fill2D(rows, columns, []);    
+    this.canvas.height = this.kPixelHeight;
+    this.context = this.canvas.getContext("2d");
+    this.units = fill2DObject(rows, columns);
 }
 
 /**
@@ -30,7 +30,7 @@ Game.prototype.getUnits = function (name) {
     var agg = [];
     for (var r = 0; r < this.rows; r++) {
         for (var c = 0; c < this.columns; c++) {
-            agg.concat(this.getUnitsAt(r, c));
+            agg.concat(this.getUnitsAt(name, r, c));
         }
     }
     return agg;
@@ -40,9 +40,7 @@ Game.prototype.getUnits = function (name) {
  * filter units by name and position
  */
 Game.prototype.getUnitsAt = function (name, row, column) {
-    return this.getAllUnitsAt(row, column).filter((u) => {
-        return u.name == name;
-    })
+    return this.getAllUnitsAt(row, column)[name];
 }
 
 /**
@@ -59,35 +57,45 @@ Game.prototype.getAllUnitsAt = function (row, column) {
  * @param {Boolean} superposable with another component
  */
 Game.prototype.addUnitAt = function (name, row, column, superposable) {
-    if (superposable || getUnitsAt(row, column) == 0) {
-        this.units[row][column].push(new Unit(name, row, column));
+    if (this.canAddAt(row, column)) {
+        (this.units[row][column])[name] = new Unit(name, row, column, superposable);
     }
+}
+
+/**
+ * returns true if there are no unit that does not accepect superposition at given position
+ */
+Game.prototype.canAddAt = function (row, column) {
+    var units = this.getAllUnitsAt(row, column);
+    for (var property in units) {
+        if (units.hasOwnProperty(property)) {
+            if (!units[property].superposable) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 /**
  * add unit at random position in grid
  * @param {String} component name
- * @param {Boolean} superposable with another component
- */
-Game.prototype.addUnitAtRandom = function (name, superposable) {
-    var row;
-    var column;
-    do {
-        row = getRandomIntInclusive(0, this.columns - 1);
-        column = getRandomIntInclusive(0, this.rows - 1);
-    } while (superposable || getUnitsAt(row, column) == 0)
-    this.addUnitAt(name, row, column);
-}
-
-/**
- * add quantity of unit at ramdom position in grid
- * @param {String} component name
- * @param {Number} quantity
+ * @param {Number} quantity 
  * @param {Boolean} superposable with another component
  */
 Game.prototype.addUnitsAtRandom = function (name, quantity, superposable) {
-    for (var i = 0; i < quantity; i++) {
-        this.addUnitAtRandom(name, superposable);
+    var row;
+    var column;
+    var added = 0;
+    if (quantity > 0) {
+        while (added < quantity) {
+            row = getRandomIntInclusive(0, this.rows - 1);
+            column = getRandomIntInclusive(0, this.columns - 1);
+            if (this.canAddAt(row, column)) {
+                this.addUnitAt(name, row, column, superposable);
+                added++;
+            }
+        }
     }
 }
 
@@ -142,38 +150,6 @@ Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
     }
 }
 
-/** Loads all images
- * @param {String} sources
- * @param {function} callback
- */
-function loadImages(sources, callback) {
-    var nb = 0;
-    var loaded = 0;
-    var imgs = {};
-    for (var i in sources) {
-        if (sources.hasOwnProperty(i)) {
-            nb++;
-            imgs[i] = new Image();
-            imgs[i].src = sources[i];
-            imgs[i].onload = function () {
-                loaded++;
-                if (loaded == nb) {
-                    callback(imgs);
-                }
-            }
-        }
-    }
-}
-
-/**
- * load images
- */
-Game.prototype.init = function () {
-    loadImages(this.sprites, function (imgs) {
-        this.images = imgs;
-    });
-}
-
 /**
  * show components.
  */
@@ -183,8 +159,8 @@ Game.prototype.show = function () {
 }
 
 Game.prototype.drawBoard = function () {
-    context.clearRect(0, 0, this.kPixelWidth, this.kPixelHeight);
-    context.beginPath();
+    this.context.clearRect(0, 0, this.kPixelWidth, this.kPixelHeight);
+    this.context.beginPath();
     /* vertical lines */
     for (var x = 0; x <= this.kPixelWidth; x += this.kPieceWidth) {
         this.context.moveTo(0.5 + x, 0);
@@ -218,9 +194,13 @@ Game.prototype.drawImage = function (img, row, column) {
 Game.prototype.drawAllUnits = function () {
     for (var r = 0; r < this.rows; r++) {
         for (var c = 0; c < this.columns; c++) {
-            this.getAllUnitsAt(r, c).map((u) => {
-                this.drawImage(this.images[u.name], r, c);
-            })
+            var units = this.getAllUnitsAt(r, c);
+            for (var property in units) {
+                if (units.hasOwnProperty(property)) {
+                    var unit = units[property];
+                    this.drawImage(this.images[unit.name], r, c);
+                }
+            }
         }
     }
 }

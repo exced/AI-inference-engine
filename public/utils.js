@@ -69,3 +69,14 @@ function fill2D(rows, cols, fill) {
     while (rows--) array.push(row.slice());
     return array;
 }
+
+function fill2DObject(rows, cols) {
+    var arr = []; 
+    for (var i = 0; i < rows; i++) {
+        arr[i] = []; 
+        for (var j = 0; j < cols; j++) {
+            arr[i][j] = {};
+        }
+    }
+    return arr;
+}
