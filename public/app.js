@@ -70,16 +70,14 @@ function WindowLoad(event) {
         startTimer(game.rows);
         var fact = {
             visited: false,
+            hero: 0,
             rainbow: 0,
             monster: 0,
             hole: 0,
             cloud: 0,
             portal: 0
         };
-        facts = {
-            hero: {},
-            grid: fill2D(game.rows, game.columns, fact)
-        };
+        facts = fill2D(game.rows, game.columns, new Fact(fact));
         ruleEngine = newRuleEngine();
     });
 }
@@ -125,14 +123,6 @@ function newGame(images, rows, columns) {
     return game;
 }
 
-function* gridIterator(rows, cols) {
-    for (var r = 0; r < rows; r++) {
-        for (var c = 0; c < cols; c++) {
-            yield { row: r, column: c };
-        }
-    }
-}
-
 function newRuleEngine() {
     /* rules + facts */
     /* rules have priority representing "step". Each rule is tested. Each step apply its conditions
@@ -141,113 +131,156 @@ function newRuleEngine() {
     */
     var rules = [
         {
-            name: "hero position",
+            name: "hero position and assertion",
             priority: 0,
-            condition: function (facts, flow) {
-                return facts.hasOwnProperty('hero');
+            condition: function (facts, flow) { // flow == null
+                for (var r = 0; r < facts.length; r++) {
+                    for (var c = 0; c < facts[0].length; c++) {
+                        if (facts[r][c].hero == 1) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             },
             triggerOn: true,
             actions: function (facts, flow) {
-                return facts.hero;
-            }
-        },
-        {
-            name: "cardinal positions",
-            priority: 1,
-            condition: function (facts, flow) {
-                return true;
-            },
-            triggerOn: true,
-            actions: function (facts, flow) {
-                return game.posCardinal(this.facts.currentPosition);
-            }
-        },
-        {
-            name: "is inside grid",
-            priority: 2,
-            condition: function (facts, flow) {
-                return true;
-            },
-            triggerOn: true,
-            actions: function (facts, flow) {
-                return post.filter((p) => {
-                    return isInsideGrid(p);
+                var row;
+                var column;
+                for (var r = 0; r < facts.length; r++) {
+                    for (var c = 0; c < facts[0].length; c++) {
+                        if (facts[r][c].hero == 1) {
+                            row = r;
+                            column = c;
+                            break;
+                        }
+                    }
+                }
+                /* assert facts at hero position */
+                var fact = facts[row][column];
+                fact.visited = true;
+                Object.values(fact).map((v) => {
+                    if (typeof v === 'number' && v != 1) {
+                        v = 0;
+                    }
                 })
+                var flow = { row: row, column: column };
+                return flow;
+            }
+        },
+        {
+            name: "accessible cardinal positions",
+            priority: 1,
+            condition: function (facts, flow) { // flow == hero position { row: r, column: c}
+                return flow.hasOwnProperty('row') && flow.hasOwnProperty('column');
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                flow.accessible_from = game.accessible_from(flow.row, flow.column);
+                return flow;
             }
         },
         {
             name: "monster around rainbow",
-            priority: 3,
-            condition: function (facts) {
-                return pre.length >= 1;
+            priority: 2,
+            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
+                return (facts[flow.row][flow.column].rainbow == 1);
             },
             triggerOn: true,
-            actions: function (facts) {
-                if (!facts[pos.row][pos.column].contains(Cert.MONSTERS)) {
-                    var nb = 0;
-                    for (var i = 0; i < facts.length; i++) {
-                        if (this.facts.certitudes == Cert.RAINBOW) {
-                            nb++;
-                        }
-                    }
-                    if (nb == facts.length) {
-                        facts[pos.row][pos.column].certitudes.push(Cert.MONSTERS);
-                    }
-                }
-                return nb / facts.length;
+            actions: function (facts, flow) {
+                var possibleMonster = flow.accessible_from.filter((e, i, a) => {
+                    return !e.certainNot('monster');
+                })
+                possibleMonster.map((e) => {
+                    e.monster = 1 / possibleMonster.length;
+                })
+                return flow;
+            }
+        },
+        {
+            name: "rainbow around monster",
+            priority: 2,
+            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
+                return (facts[flow.row][flow.column].monster == 1);
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                flow.accessible_from.map((fact) => {
+                    fact.rainbow = 1;
+                })
+                return flow;
             }
         },
         {
             name: "hole around cloud",
-            priority: 3,
-            condition: function (facts) {
-                return pre.length >= 1;
+            priority: 2,
+            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
+                return (facts[flow.row][flow.column].cloud == 1);
             },
             triggerOn: true,
-            actions: function (facts) {
-                var nb = 0;
-                for (var i = 0; i < facts.length; i++) {
-                    if (this.facts.certitudes == Cert.CLOUDS) {
-                        nb++;
+            actions: function (facts, flow) {
+                var possibleHole = flow.accessible_from.filter((e, i, a) => {
+                    return !e.certainNot('hole');
+                })
+                possibleHole.map((e) => {
+                    e.hole = 1 / possibleHole.length;
+                })
+                return flow;
+            }
+        },
+        {
+            name: "cloud around hole",
+            priority: 2,
+            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
+                return (facts[flow.row][flow.column].hole == 1);
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                flow.accessible_from.map((fact) => {
+                    fact.cloud = 1;
+                })
+                return flow;
+            }
+        },
+        {
+            name: "portal is the last not visited",
+            priority: 2,
+            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
+                var notVisited = [];
+                for (var r = 0; r < facts.length; r++) {
+                    for (var c = 0; c < facts[0].length; c++) {
+                        if (!facts[r][c].visited) {
+                            notVisited.concat(facts[r][c]);
+                        }
                     }
                 }
-                if (nb == facts.length) {
-                    facts[pos.row][pos.column].certitudes.push(Cert.HOLES);
+                return notVisited.length == 1;
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                var notVisited = [];
+                for (var r = 0; r < facts.length; r++) {
+                    for (var c = 0; c < facts[0].length; c++) {
+                        if (!facts[r][c].visited) {
+                            notVisited.concat(facts[r][c]);
+                        }
+                    }
                 }
-                return nb / facts.length;
+                flow.portal = notVisited[0];     
+                return flow;
             }
         },
         {
-            name: "max probability",
-            priority: 4,
-            condition: function (facts) {
-                return pre.length >= 1;
+            name: "choose move",
+            priority: 3,
+            condition: function (facts, flow) {
+                return true;
             },
             triggerOn: true,
-            actions: function (facts) {
-
-                return;
+            actions: function (facts, flow) {
+                return flow;
             }
-        },
-        {
-            name: "certainty propagation",
-            priority: 4,
-            condition: function (facts) {
-                return facts.some((e, i, arr) => {
-                    return !e.visited && Object.values(e).some((e1, i1, arr1) => {
-                        return e1 == 1;
-                    })
-                });
-            },
-            triggerOn: true,
-            actions: function (facts) {
-                return facts.findIndex((e, i, arr) => {
-                    return !e.visited && Object.values(e).some((e1, i1, arr1) => {
-                        return e1 == 1;
-                    })
-                });
-            }
-        },
+        }
     ];
     return new RuleEngine(rules);
 }
@@ -257,10 +290,7 @@ function stepInfer() {
     var hero = game.getUnits("hero")[0];
     var row = hero.row;
     var column = hero.column;
-    var fact = facts.grid[row][column];
-    facts.hero = hero;
-    console.log("FACTS");
-    console.log(facts);
+    var fact = facts[row][column];
     /* update certain fact */
     if (game.getUnitsAt("hole", row, column)) {
         vue.score -= 10 * game.rows * game.columns;
@@ -268,6 +298,7 @@ function stepInfer() {
     } else if (game.getUnitsAt("cloud", row, column)) {
         fact.cloud = 1;
     } else if (game.getUnitsAt("monster", row, column)) {
+        fact.monster = 1;
         vue.score -= 10 * game.rows * game.columns;
     } else if (game.getUnitsAt("rainbow", row, column)) {
         fact.rainbow = 1;
@@ -277,11 +308,12 @@ function stepInfer() {
     } else {
         fact.empty = 1;
     }
-    /* update facts database */
-    fact.visited = true;
+    fact.hero = 1;
     /* copy */
     var factsCopy = JSON.parse(JSON.stringify(facts));
     /* infer */
     var newPosition = ruleEngine.infer(factsCopy);
-    stepGame(newPosition);
+    fact.hero = 0;
+    //game.moveUnitTo(newPosition);
+    //stepGame(newPosition);
 }

@@ -13,7 +13,7 @@ console.log(gen.next().value); // 2
 var rows = 3;
 var cols = 3;
 
-function* gridIterator() {
+function* factsIterator() {
     for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
             yield { row: r, column: c };
