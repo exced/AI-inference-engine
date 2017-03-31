@@ -30,9 +30,13 @@ Game.prototype.getUnits = function (name) {
     var agg = [];
     for (var r = 0; r < this.rows; r++) {
         for (var c = 0; c < this.columns; c++) {
-            agg.concat(this.getUnitsAt(name, r, c));
+            var unit = this.getUnitsAt(name, r, c);
+            if (unit) {
+                agg.push(unit);
+            }
         }
     }
+    console.log(agg);
     return agg;
 }
 
@@ -110,7 +114,7 @@ Game.prototype.posCardinal = function (row, column) {
 
 Game.prototype.accessible_from = function (row, column) {
     return this.posCardinal(row, column).filter((pos) => {
-        return isInsideGrid(p.row, p.column);
+        return this.isInsideGrid(pos.row, pos.column);
     });
 }
 
@@ -119,7 +123,7 @@ Game.prototype.accessible_from = function (row, column) {
  */
 Game.prototype.addUnitAround = function (name, row, column, superposable) {
     this.accessible_from(row, column).map((pos) => {
-        this.addUnitAt(name, pos.row, pow.column, superposable);
+        this.addUnitAt(name, pos.row, pos.column, superposable);
     })
 }
 

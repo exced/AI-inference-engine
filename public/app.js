@@ -106,12 +106,12 @@ function newGame(images, rows, columns) {
     game.addUnitsAtRandom("monster", (~~(rows * columns) / 50), false);
     /* rainbows around monster */
     game.getUnits("monster").map((c) => {
-        addUnitAround("rainbow", c.row, c.column, true);
+        game.addUnitAround("rainbow", c.row, c.column, true);
     });
     game.addUnitsAtRandom("hole", ~~(rows * columns) / 50, false);
     /* clouds around hole */
     game.getUnits("hole").map((c) => {
-        addUnitAround("cloud", c.row, c.column, true);
+        game.addUnitAround("cloud", c.row, c.column, true);
     });
     return game;
 }
