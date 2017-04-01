@@ -138,9 +138,7 @@ Game.prototype.addUnitAround = function (name, row, column, superposable) {
  * remove unit at given position
  */
 Game.prototype.removeUnitAt = function (name, row, column) {
-    this.units[row][column] = this.units[row][column].filter((u) => {
-        return u.name != name;
-    })
+    delete this.units[row][column][name];
 }
 
 /**
@@ -149,7 +147,24 @@ Game.prototype.removeUnitAt = function (name, row, column) {
 Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
     if (this.isInsideGrid(newRow, newCol)) {
         this.removeUnitAt(name, oldRow, oldCol);
-        this.addUnitAt(name, oldRow, oldCol);
+        this.addUnitAt(name, newRow, newCol);
+    }
+}
+
+/**
+ * @param {String} name
+ * @param {Action} action description object
+ */
+Game.prototype.doAction = function (action) {
+    switch (action.action) {
+        case 'move':
+            this.moveUnitTo(action.name, action.from.row, action.from.column, action.to.row, action.to.column);
+            break;
+        case 'attack':
+            this.removeUnitAt(action.on, action.to.row, action.to.column);
+            break;
+        default:
+            break;
     }
 }
 

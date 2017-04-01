@@ -75,9 +75,13 @@ function WindowLoad(event) {
             monster: 0,
             hole: 0,
             cloud: 0,
+            danger: 0,
             portal: 0
         };
-        facts = fill2D(game.rows, game.columns, new Fact(fact));
+        facts = {
+            score: 0,
+            grid: fill2D(game.rows, game.columns, new Fact(fact))
+        }
         ruleEngine = newRuleEngine();
     });
 }
@@ -127,16 +131,16 @@ function newRuleEngine() {
     /* rules + facts */
     /* rules have priority representing "step". Each rule is tested. Each step apply its conditions
     on the result of the previous "step" result (modified by previous actions). Warn with the dimensions and
-    the attributes of the flow (chain of objects). The entrypoint is a matrix of facts.
+    the attributes of the flow (chain of objects). The entrypoint is a set of facts.
     */
     var rules = [
         {
             name: "hero position and assertion",
             priority: 0,
-            condition: function (facts, flow) { // flow == null
-                for (var r = 0; r < facts.length; r++) {
-                    for (var c = 0; c < facts[0].length; c++) {
-                        if (facts[r][c].hero == 1) {
+            conditions: function (facts, flow) { // flow == null
+                for (var r = 0; r < facts.grid.length; r++) {
+                    for (var c = 0; c < facts.grid[0].length; c++) {
+                        if (facts.grid[r][c].fact.hero == 1) {
                             return true;
                         }
                     }
@@ -148,8 +152,8 @@ function newRuleEngine() {
                 var row;
                 var column;
                 for (var r = 0; r < facts.length; r++) {
-                    for (var c = 0; c < facts[0].length; c++) {
-                        if (facts[r][c].hero == 1) {
+                    for (var c = 0; c < facts.grid[0].length; c++) {
+                        if (facts.grid[r][c].fact.hero == 1) {
                             row = r;
                             column = c;
                             break;
@@ -157,7 +161,7 @@ function newRuleEngine() {
                     }
                 }
                 /* assert facts at hero position */
-                var fact = facts[row][column];
+                var fact = facts.grid[row][column].fact;
                 fact.visited = true;
                 Object.values(fact).map((v) => {
                     if (typeof v === 'number' && v != 1) {
@@ -171,7 +175,7 @@ function newRuleEngine() {
         {
             name: "accessible cardinal positions",
             priority: 1,
-            condition: function (facts, flow) { // flow == hero position { row: r, column: c}
+            conditions: function (facts, flow) { // flow == hero position { row: r, column: c}
                 return flow.hasOwnProperty('row') && flow.hasOwnProperty('column');
             },
             triggerOn: true,
@@ -181,32 +185,47 @@ function newRuleEngine() {
             }
         },
         {
-            name: "monster around rainbow",
+            name: "empty is safe",
             priority: 2,
-            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
-                return (facts[flow.row][flow.column].rainbow == 1);
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return (facts.grid[flow.row][flow.column].fact.empty == 1);
             },
             triggerOn: true,
             actions: function (facts, flow) {
-                var possibleMonster = flow.accessible_from.filter((e, i, a) => {
-                    return !e.certainNot('monster');
-                })
-                possibleMonster.map((e) => {
-                    e.monster = 1 / possibleMonster.length;
-                })
+                facts.grid[flow.row][flow.column].fact.danger = 0;
+                return flow;
+            }
+        },
+        {
+            name: "monster around rainbow",
+            priority: 2,
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return (facts.grid[flow.row][flow.column].fact.rainbow == 1);
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                var possibleMonster =
+                    flow.accessible_from
+                        .filter((e, i, a) => {
+                            var fact = facts.grid[e.row][e.column].fact;
+                            return !fact.certainNot('monster');
+                        });
+                possibleMonster.map((pos) => {
+                    facts.grid[pos.row][pos.column].fact.monster = 1 / possibleMonster.length;
+                });
                 return flow;
             }
         },
         {
             name: "rainbow around monster",
             priority: 2,
-            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
-                return (facts[flow.row][flow.column].monster == 1);
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return (facts.grid[flow.row][flow.column].fact.monster == 1);
             },
             triggerOn: true,
             actions: function (facts, flow) {
-                flow.accessible_from.map((fact) => {
-                    fact.rainbow = 1;
+                flow.accessible_from.map((pos) => {
+                    facts.grid[pos.row][pos.column].fact.rainbow = 1;
                 })
                 return flow;
             }
@@ -214,71 +233,103 @@ function newRuleEngine() {
         {
             name: "hole around cloud",
             priority: 2,
-            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
-                return (facts[flow.row][flow.column].cloud == 1);
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return (facts.grid[flow.row][flow.column].fact.cloud == 1);
             },
             triggerOn: true,
             actions: function (facts, flow) {
-                var possibleHole = flow.accessible_from.filter((e, i, a) => {
-                    return !e.certainNot('hole');
-                })
-                possibleHole.map((e) => {
-                    e.hole = 1 / possibleHole.length;
-                })
+                var possibleHole =
+                    flow.accessible_from
+                        .filter((e, i, a) => {
+                            var fact = facts.grid[e.row][e.column].fact;
+                            return !fact.certainNot('hole');
+                        });
+                possibleHole.map((pos) => {
+                    facts.grid[pos.row][pos.column].fact.hole = 1 / possibleHole.length;
+                });
                 return flow;
             }
         },
         {
             name: "cloud around hole",
             priority: 2,
-            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
-                return (facts[flow.row][flow.column].hole == 1);
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return (facts.grid[flow.row][flow.column].fact.hole == 1);
             },
             triggerOn: true,
             actions: function (facts, flow) {
-                flow.accessible_from.map((fact) => {
-                    fact.cloud = 1;
+                flow.accessible_from.map((pos) => {
+                    facts.grid[pos.row][pos.column].fact.cloud = 1;
                 })
                 return flow;
             }
         },
         {
             name: "portal is the last not visited",
-            priority: 2,
-            condition: function (facts, flow) { // flow = uncertain pos inside grid : Array
-                var notVisited = [];
-                for (var r = 0; r < facts.length; r++) {
-                    for (var c = 0; c < facts[0].length; c++) {
-                        if (!facts[r][c].visited) {
-                            notVisited.concat(facts[r][c]);
-                        }
-                    }
-                }
-                return notVisited.length == 1;
-            },
-            triggerOn: true,
-            actions: function (facts, flow) {
-                var notVisited = [];
-                for (var r = 0; r < facts.length; r++) {
-                    for (var c = 0; c < facts[0].length; c++) {
-                        if (!facts[r][c].visited) {
-                            notVisited.concat(facts[r][c]);
-                        }
-                    }
-                }
-                flow.portal = notVisited[0];     
-                return flow;
-            }
-        },
-        {
-            name: "choose move",
             priority: 3,
-            condition: function (facts, flow) {
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
                 return true;
             },
             triggerOn: true,
             actions: function (facts, flow) {
+                var notVisited = [];
+                for (var r = 0; r < facts.grid.length; r++) {
+                    for (var c = 0; c < facts.grid[0].length; c++) {
+                        if (!facts.grid[r][c].fact.visited) {
+                            notVisited.concat({ row: r, column: c });
+                        }
+                    }
+                }
+                if (notVisited.length == 1) {
+                    facts.grid[notVisited[0].row][notVisited[0].column].fact.portal = 1;
+                }
                 return flow;
+            }
+        },
+        {
+            name: "danger probabilities",
+            priority: 4,
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return true;
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                flow.accessible_from.map((pos) => {
+                    var fact = facts.grid[pos.row][pos.column].fact;
+                    fact.danger = Math.max(fact.monster, fact.hole);
+                })
+                return flow;
+            }
+        },
+        {
+            name: "reduce next action",
+            priority: 5,
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid + danger coeff : Array
+                var res =
+                    flow.accessible_from
+                        .reduce((acc, item, index, arr) => {
+                            return [facts.grid[item.row][item.column].fact].concat(acc);
+                        }, [])
+                        .every((e) => {
+                            return e.hasOwnProperty('danger');
+                        });
+                return res;
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                /* throws stone if the attack cost and the move straight is cheaper than 
+                avoiding the monster */
+                
+                /*
+                var notVisited = flow.accessible_from
+                    .filter((e) => {
+                        return !facts.grid[e.row][e.column].fact.visited;
+                    });
+                    */
+                return flow.accessible_from.reduce((acc, e, i, arr) => {
+                    var fact = facts.grid[e.row][e.column].fact;
+                    return fact.danger < acc.danger ? e : acc;
+                }, { danger: Number.MAX_VALUE })
             }
         }
     ];
@@ -290,30 +341,32 @@ function stepInfer() {
     var hero = game.getUnits("hero")[0];
     var row = hero.row;
     var column = hero.column;
-    var fact = facts[row][column];
+    var fact = facts.grid[row][column].fact;
     /* update certain fact */
     if (game.getUnitsAt("hole", row, column)) {
         vue.score -= 10 * game.rows * game.columns;
+        facts.score -= 10 * game.rows * game.columns;
         fact.hole = 1;
     } else if (game.getUnitsAt("cloud", row, column)) {
         fact.cloud = 1;
     } else if (game.getUnitsAt("monster", row, column)) {
         fact.monster = 1;
         vue.score -= 10 * game.rows * game.columns;
+        facts.score -= 10 * game.rows * game.columns;
     } else if (game.getUnitsAt("rainbow", row, column)) {
         fact.rainbow = 1;
     } else if (game.getUnitsAt("portal", row, column)) {
         vue.score += 10 * game.rows * game.columns;
+        facts.score += 10 * game.rows * game.columns;
         fact.portal = 1;
     } else {
         fact.empty = 1;
     }
     fact.hero = 1;
-    /* copy */
-    var factsCopy = JSON.parse(JSON.stringify(facts));
     /* infer */
-    var newPosition = ruleEngine.infer(factsCopy);
+    var action = ruleEngine.infer(facts).action;
     fact.hero = 0;
-    //game.moveUnitTo(newPosition);
-    //stepGame(newPosition);
+    console.log("action " + JSON.stringify(action));
+    game.doAction('hero', action);
+    game.show();
 }
