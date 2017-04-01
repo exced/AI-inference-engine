@@ -81,9 +81,10 @@ RuleEngine.prototype.infer = function (facts) {
             console.log("rules step" + JSON.stringify(rulesByPriority[i]));
             selectedRules = this.selectRules(facts, flow, rulesByPriority[i]);
             console.log("selected rules" + JSON.stringify(selectedRules));
-            rule = selectedRules[0]; // arbitrary
+            rule = selectedRules[0];
             console.log("rule" + JSON.stringify(rule));
             console.log("flow" + JSON.stringify(flow));
+            console.log(facts);
             flow = rule.actions(facts, flow);
             rule.marked = true;
         }

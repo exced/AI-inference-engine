@@ -3,13 +3,16 @@ var rows = 2;
 var columns = 2;
 var infer;
 var facts;
+var threshold = 0.5; // decision making threshold : agent learns the best threshold to maximize the score.
+var learningRate = 0.2;
 
 var vue = new Vue({
     el: '#scores',
     data: {
         /* scoreboard */
-        timer: '',
-        score: 0
+        score: 0,
+        threshold: threshold,
+        learningRate: learningRate
     },
     computed: {
     },
@@ -25,6 +28,28 @@ if (window.addEventListener) { // Mozilla, Netscape, Firefox
 }
 else if (window.attachEvent) { // IE
     window.attachEvent('onload', WindowLoad);
+}
+
+/**
+ * initialize facts
+ */
+function initFacts(game, learningRate, score, threshold) {
+    var fact = {
+        visited: false,
+        hero: 0,
+        rainbow: 0,
+        monster: 0,
+        hole: 0,
+        cloud: 0,
+        danger: 0,
+        portal: 0
+    };
+    facts = {
+        score: score,
+        learningRate: learningRate,
+        threshold: threshold,
+        grid: fill2D(game.rows, game.columns, new Fact(fact))
+    }
 }
 
 /** Loads all images
@@ -67,37 +92,9 @@ function WindowLoad(event) {
     loadImages(sprites, function (imgs) {
         game = newGame(imgs, rows + 1, columns + 1);
         game.show();
-        startTimer(game.rows);
-        var fact = {
-            visited: false,
-            hero: 0,
-            rainbow: 0,
-            monster: 0,
-            hole: 0,
-            cloud: 0,
-            danger: 0,
-            portal: 0
-        };
-        facts = {
-            score: 0,
-            grid: fill2D(game.rows, game.columns, new Fact(fact))
-        }
+        initFacts(game, 0, threshold);
         ruleEngine = newRuleEngine();
     });
-}
-
-function startTimer(duration) {
-    var timer = duration, minutes, seconds;
-    var t = setInterval(function () {
-        minutes = parseInt(timer / 60, 10)
-        seconds = parseInt(timer % 60, 10);
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-        vue.timer = minutes + ":" + seconds;
-        if (--timer < 0) {
-            clearInterval(t);
-        }
-    }, 1000);
 }
 
 /**
@@ -125,6 +122,29 @@ function newGame(images, rows, columns) {
         game.addUnitAround("cloud", c.row, c.column, true);
     });
     return game;
+}
+
+function countNeighborsNotVisited(row, column) {
+    var neighbors = game.accessible_from(row, column);
+    var count = 0;
+    for (var n in neighbors) {
+        if (facts.grid[n.row][n.column].fact.visited) {
+            count++;
+        }
+    }
+    return count;
+}
+
+function minDangerAround(row, column) {
+    var minDangerAround = Number.MAX_VALUE;
+    var danger;
+    for (var around in game.accessible_from(row, column)) {
+        danger = facts.grid[around.row][around.column].fact.danger
+        if (danger < minDangerAround) {
+            minDangerAround = danger;
+        }
+    }
+    return minDangerAround;
 }
 
 function newRuleEngine() {
@@ -168,8 +188,7 @@ function newRuleEngine() {
                         v = 0;
                     }
                 })
-                var flow = { row: row, column: column };
-                return flow;
+                return { row: row, column: column };
             }
         },
         {
@@ -302,41 +321,144 @@ function newRuleEngine() {
             }
         },
         {
-            name: "reduce next action",
+            name: "do not move to a hole if you are sure of its position",
             priority: 5,
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return true;
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                flow.accessible_from = flow.accessible_from.filter((pos) => {
+                    return facts.grid[pos.row][pos.column].fact.certainNot('hole');
+                });
+                return flow;
+            }
+        },
+        {
+            name: "discover new if danger is below threshold",
+            priority: 6,
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return flow.accessible_from
+                    .reduce((acc, pos, i, arr) => {
+                        return [facts.grid[pos.row][pos.column].fact].concat(acc);
+                    }, [])
+                    .filter((fact) => {
+                        return !fact.visited;
+                    })
+                    .some((fact) => {
+                        return fact.danger <= facts.threshold;
+                    });
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                var possible =
+                    flow.accessible_from
+                        .reduce((acc, pos, i, arr) => {
+                            var fact = facts.grid[pos.row][pos.column].fact;
+                            return !fact.visited && fact.danger <= facts.threshold ? [item].concat(acc) : acc;
+                        }, []);
+                var posMinDanger = possible[0];
+                var minDanger = facts.grid[posMinDanger.row][posMinDanger.column].fact.danger;
+                for (var i = 1; i < possible.length; i++) {
+                    var pos = possible[i];
+                    var danger = facts.grid[pos.row][pos.columns].fact.danger;
+                    if (danger < minDanger) {
+                        posMinDanger = pos;
+                        minDanger = danger;
+                    }
+                }
+                return new Action('hero').move(facts.row, facts.column, posMinDanger.row, posMinDanger.column);
+            }
+        },
+        {
+            name: "throws stone on monster",
+            priority: 6,
             conditions: function (facts, flow) { // flow = cardinal pos inside grid + danger coeff : Array
                 var res =
                     flow.accessible_from
                         .reduce((acc, item, index, arr) => {
                             return [facts.grid[item.row][item.column].fact].concat(acc);
                         }, [])
-                        .every((e) => {
-                            return e.hasOwnProperty('danger');
+                        .some((e) => {
+                            return e.hasOwnProperty('monster') && e.monster >= facts.threshold;
                         });
                 return res;
             },
             triggerOn: true,
             actions: function (facts, flow) {
-                /* throws stone if the attack cost and the move straight is cheaper than 
-                avoiding the monster */
-                
-                /*
-                var notVisited = flow.accessible_from
-                    .filter((e) => {
-                        return !facts.grid[e.row][e.column].fact.visited;
-                    });
-                    */
-                return flow.accessible_from.reduce((acc, e, i, arr) => {
-                    var fact = facts.grid[e.row][e.column].fact;
-                    return fact.danger < acc.danger ? e : acc;
-                }, { danger: Number.MAX_VALUE })
+                /* collect positions */
+                var possible =
+                    flow.accessible_from
+                        .reduce((acc, item, index, arr) => {
+                            var fact = facts.grid[item.row][item.column].fact;
+                            return fact.hasOwnProperty('monster') && fact.monster >= facts.threshold ? [item].concat(acc) : acc;
+                        }, []);
+                /* choose the most probable */
+                var posMaxMonster = possible[0];
+                var maxMonster = facts.grid[posMaxMonster.row][posMaxMonster.column].fact.monster;
+                for (var i = 1; i < possible.length; i++) {
+                    var pos = possible[i];
+                    var monster = facts.grid[pos.row][pos.columns].fact.monster;
+                    if (monster < maxMonster) {
+                        posMaxMonster = pos;
+                        maxMonster = monster;
+                    }
+                }
+                return new Action('hero').attack('monster', maxMonster.row, maxMonster.column);
+            }
+        },
+        {
+            name: "go back to safe",
+            priority: 6,
+            conditions: function (facts, flow) { // flow = cardinal pos inside grid : Array
+                return true;
+            },
+            triggerOn: true,
+            actions: function (facts, flow) {
+                /* collect all visited with non-visited neighbors */
+                var nbMaxNeighbors = 0;
+                var count;
+                for (var r = 0; r < facts.rows; r++) {
+                    for (var c = 0; c < facts.columns; c++) {
+                        count = countNeighborsNotVisited(r, c);
+                        if (count >= 0) {
+                            if (count > nbMaxNeighbors) {
+                                nbMaxNeighbors = count;
+                            }
+                        }
+                    }
+                }
+                var minDangerAround = Number.MAX_VALUE;
+                var min = Number.MAX_VALUE;
+                var posMinDangerAround;
+                /* filter max non visited */
+                for (var r = 0; r < facts.rows; r++) {
+                    for (var c = 0; c < facts.columns; c++) {
+                        count = countNeighborsNotVisited(r, c);
+                        if (count == nbMaxNeighbors) {
+                            min = minDangerAround(r, c);
+                            if (min < minDangerAround) {
+                                minDangerAround = min;
+                                posMinDangerAround = { row: r, column: c };
+                            }
+                        }
+                    }
+                }
+                return new Action('hero').move(facts.row, facts.column, minDangerAround.row, minDangerAround.column);
             }
         }
     ];
     return new RuleEngine(rules);
 }
 
-/* add fact */
+function updateThreshold(facts) {
+    var up = facts.learningRate * Math.tanh(facts.score);
+    if (!(facts.threshold - up < 0 || facts.threshold - up > 1)) {
+        facts.threshold -= up;
+    }
+}
+
+/* add fact, update score, do the infered action */
 function stepInfer() {
     var hero = game.getUnits("hero")[0];
     var row = hero.row;
@@ -347,26 +469,37 @@ function stepInfer() {
         vue.score -= 10 * game.rows * game.columns;
         facts.score -= 10 * game.rows * game.columns;
         fact.hole = 1;
+        game.doAction(new Action('hero').move(row, column, game.initPos.row, game.initPos.column));
     } else if (game.getUnitsAt("cloud", row, column)) {
         fact.cloud = 1;
     } else if (game.getUnitsAt("monster", row, column)) {
         fact.monster = 1;
         vue.score -= 10 * game.rows * game.columns;
         facts.score -= 10 * game.rows * game.columns;
+        game.doAction(new Action('hero').move(row, column, game.initPos.row, game.initPos.column));
     } else if (game.getUnitsAt("rainbow", row, column)) {
         fact.rainbow = 1;
     } else if (game.getUnitsAt("portal", row, column)) {
         vue.score += 10 * game.rows * game.columns;
         facts.score += 10 * game.rows * game.columns;
-        fact.portal = 1;
+        game = game.nextGame();
+        initFacts(game, facts.learningRate, facts.score, facts.threshold);
     } else {
         fact.empty = 1;
     }
     fact.hero = 1;
+    /* update threshold */
+    updateThreshold(facts);
     /* infer */
     var action = ruleEngine.infer(facts).action;
     fact.hero = 0;
     console.log("action " + JSON.stringify(action));
+    if (action.action == "move") {
+        facts.score -= 1;
+    } else if (action.action == "attack") {
+        facts.score -= 10;
+    }
     game.doAction('hero', action);
     game.show();
 }
+

@@ -21,6 +21,7 @@ function Game(images, canvas, rows, columns) {
     this.canvas.height = this.kPixelHeight;
     this.context = this.canvas.getContext("2d");
     this.units = fill2D(rows, columns, {});
+    this.initPos;
 }
 
 /** is position inside grid ?
@@ -70,6 +71,12 @@ Game.prototype.getAllUnitsAt = function (row, column) {
 Game.prototype.addUnitAt = function (name, row, column, superposable) {
     if (this.canAddAt(row, column)) {
         (this.units[row][column])[name] = new Unit(name, row, column, superposable);
+        if (name == 'hero') { // save the initial position of the hero
+            this.initPos = {
+                row: row,
+                column: column
+            }
+        }
     }
 }
 
@@ -221,4 +228,11 @@ Game.prototype.drawAllUnits = function () {
             }
         }
     }
+}
+
+/**
+ * next game : new game with bigger map
+ */
+Game.prototype.nextGame = function () {
+    return new Game(this.images, this.canvas, this.rows + 1, this.columns + 1);
 }
