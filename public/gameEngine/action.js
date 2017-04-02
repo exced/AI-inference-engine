@@ -11,6 +11,7 @@ function Action(name) {
  */
 Action.prototype.move = function (fromRow, fromCol, toRow, toCol) {
     return {
+        unit: this.name,
         action: 'move',
         from: {
             row: fromRow,
@@ -28,8 +29,23 @@ Action.prototype.move = function (fromRow, fromCol, toRow, toCol) {
  */
 Action.prototype.attack = function (name, toRow, toCol) {
     return {
+        unit: this.name,
         action: 'attack',
         on: name,
+        to: {
+            row: toRow,
+            column: toCol
+        }
+    }
+}
+
+/**
+ * Creates a new move restart action
+ */
+Action.prototype.restart = function (toRow, toCol) {
+    return {
+        unit: this.name,
+        action: 'restart',
         to: {
             row: toRow,
             column: toCol

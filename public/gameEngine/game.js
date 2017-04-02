@@ -1,5 +1,5 @@
 /**
- * Grid based game engine.
+ * Grid based game engine. The hero is unique and should be named 'hero'. 
  */
 
 /**
@@ -117,6 +117,28 @@ Game.prototype.addUnitsAtRandom = function (name, quantity, superposable) {
     }
 }
 
+/**
+ * add unit at safe  random position in grid
+ * @param {String} component name
+ * @param {Number} quantity 
+ * @param {Boolean} superposable with another component
+ */
+Game.prototype.addUnitsAtSafeRandom = function (name, quantity, superposable) {
+    var row;
+    var column;
+    var added = 0;
+    if (quantity > 0) {
+        while (added < quantity) {
+            row = getRandomIntInclusive(0, this.rows - 1);
+            column = getRandomIntInclusive(0, this.columns - 1);
+            if (Object.keys(this.getAllUnitsAt(row, column)).length == 0) {
+                this.addUnitAt(name, row, column, superposable);
+                added++;
+            }
+        }
+    }
+}
+
 Game.prototype.posCardinal = function (row, column) {
     return [
         { row: row - 1, column: column },
@@ -165,8 +187,11 @@ Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
 Game.prototype.doAction = function (action) {
     switch (action.action) {
         case 'move':
-            this.moveUnitTo(action.name, action.from.row, action.from.column, action.to.row, action.to.column);
+            this.moveUnitTo(action.unit, action.from.row, action.from.column, action.to.row, action.to.column);
             break;
+        case 'restart':
+            this.addUnitAt(action.unit, action.to.row, action.to.column, true);
+            break;            
         case 'attack':
             this.removeUnitAt(action.on, action.to.row, action.to.column);
             break;
@@ -217,12 +242,13 @@ Game.prototype.drawImage = function (img, row, column) {
  * draw all units
  */
 Game.prototype.drawAllUnits = function () {
+    var unit;
     for (var r = 0; r < this.rows; r++) {
         for (var c = 0; c < this.columns; c++) {
             var units = this.getAllUnitsAt(r, c);
             for (var property in units) {
                 if (units.hasOwnProperty(property)) {
-                    var unit = units[property];
+                    unit = units[property];
                     this.drawImage(this.images[unit.name], r, c);
                 }
             }

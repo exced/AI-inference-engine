@@ -39,14 +39,14 @@ function prioritize(rules) {
 /**
  * select applicable non marked rules
  */
-RuleEngine.prototype.selectRules = function (facts, flow, rules) {
+RuleEngine.prototype.selectRules = function (facts, rules) {
     var selected = [];
     for (var i = 0; i < rules.length; i++) {
         var rule = rules[i];
-        if (!rule.conditions(facts, flow)) {
-            rule.marked = true;
-        } else {
-            if (!rule.marked) {
+        if (!rule.marked) {
+            if (!rule.conditions(facts)) {
+                rule.marked = true;
+            } else {
                 selected.push(rule);
             }
         }
@@ -78,15 +78,16 @@ RuleEngine.prototype.infer = function (facts) {
     var rulesByPriority = prioritize(this.rules);
     for (var i = 0; i < rulesByPriority.length; i++) {
         while (this.someNotMarked(rulesByPriority[i])) {
-            console.log("rules step" + JSON.stringify(rulesByPriority[i]));
-            selectedRules = this.selectRules(facts, flow, rulesByPriority[i]);
-            console.log("selected rules" + JSON.stringify(selectedRules));
-            rule = selectedRules[0];
-            console.log("rule" + JSON.stringify(rule));
-            console.log("flow" + JSON.stringify(flow));
-            console.log(facts);
-            flow = rule.actions(facts, flow);
-            rule.marked = true;
+            //console.log("rules step" + JSON.stringify(rulesByPriority[i]));
+            selectedRules = this.selectRules(facts, rulesByPriority[i]);
+            if (selectedRules.length > 0) {
+                //console.log("selected rules" + JSON.stringify(selectedRules));
+                rule = selectedRules[0];
+                //console.log("rule" + JSON.stringify(rule));
+                facts = rule.actions(facts);
+                rule.marked = true;
+                //console.log(facts);
+            }
         }
     }
     return flow;

@@ -11,8 +11,9 @@ function Fact(fact) {
  * @param {Object} fact
  * @param {String} field name
  */
-Fact.prototype.certain = function (fact, field) {
-    return (typeof e1 === 'number' && e1[field] == 1);
+Fact.prototype.certain = function (field) {
+    var prob = this.fact[field];
+    return (typeof prob === 'number' && prob == 1);
 }
 
 /**
@@ -20,6 +21,7 @@ Fact.prototype.certain = function (fact, field) {
  * @param {Object} fact
  * @param {String} field name
  */
-Fact.prototype.certainNot = function (fact, field) {
-    return (typeof e1 === 'number' && e1[field] == 0);
+Fact.prototype.certainNot = function (field) {
+    var prob = this.fact[field];
+    return (typeof prob === 'number' && prob == 0);
 }

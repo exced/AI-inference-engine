@@ -64,19 +64,24 @@ function zero2D(rows, cols) {
  * @param {Object} input
  */
 function fill2D(rows, cols, fill) {
-    var array = [], row = [];
-    while (cols--) row.push(fill);
-    while (rows--) array.push(row.slice());
-    return array;
-}
-
-function fill2D(rows, cols, fill) {
-    var arr = []; 
+    var arr = [];
     for (var i = 0; i < rows; i++) {
-        arr[i] = []; 
+        arr[i] = [];
         for (var j = 0; j < cols; j++) {
             arr[i][j] = JSON.parse(JSON.stringify(fill));
         }
     }
     return arr;
 }
+
+function fill2DFact(rows, cols, fact) {
+    var arr = [];
+    for (var i = 0; i < rows; i++) {
+        arr[i] = [];
+        for (var j = 0; j < cols; j++) {
+            arr[i][j] = new Fact(JSON.parse(JSON.stringify(fact)));
+        }
+    }
+    return arr;
+}
+
