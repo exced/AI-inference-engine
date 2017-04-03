@@ -109,8 +109,7 @@ function initFacts(game, score, learningRate, threshold) {
         monster: 0,
         hole: 0,
         cloud: 0,
-        danger: 0,
-        portal: 0
+        danger: 0
     };
     var hero = game.getUnits("hero")[0];
     facts = {
@@ -306,21 +305,35 @@ function newRuleEngine() {
             name: "portal is the last not visited",
             priority: 3,
             conditions: function (facts) { // flow = cardinal pos inside grid : Array. accessible_from
-                return true;
+                /* collect all non visited */
+                var notVisited = [];
+                var it = facts.gridIterator(game.rows, game.columns);
+                var pos = it.next();
+                var fact;
+                while (!pos.done) {
+                    fact = facts.grid[pos.value.row][pos.value.column].fact;
+                    if (!fact.visited) {
+                        notVisited.push({ row: pos.value.row, column: pos.value.column });
+                    }
+                    pos = it.next();
+                } 
+                return notVisited.length == 1;
             },
             triggerOn: true,
             actions: function (facts) {
-                var notVisited = [];
-                for (var r = 0; r < facts.grid.length; r++) {
-                    for (var c = 0; c < facts.grid[0].length; c++) {
-                        if (!facts.grid[r][c].fact.visited) {
-                            notVisited.concat({ row: r, column: c });
-                        }
+                /* take the only one not visited */
+                var notVisited;
+                var it = facts.gridIterator(game.rows, game.columns);
+                var pos = it.next();
+                var fact;
+                while (!pos.done) {
+                    fact = facts.grid[pos.value.row][pos.value.column].fact;
+                    if (!fact.visited) {
+                        notVisited = { row: pos.value.row, column: pos.value.column };
                     }
+                    pos = it.next();
                 }
-                if (notVisited.length == 1) {
-                    facts.grid[notVisited[0].row][notVisited[0].column].fact.portal = 1;
-                }
+                facts.portal = notVisited;
                 return facts;
             }
         },
@@ -356,6 +369,18 @@ function newRuleEngine() {
                 facts.accessible_from = facts.accessible_from.filter((pos) => {
                     return facts.grid[pos.row][pos.column].certainNot('hole');
                 });
+                return facts;
+            }
+        },
+        {
+            name: "go to portal if you know where it is",
+            priority: 6,
+            conditions: function (facts) { // flow = cardinal pos inside grid : Array
+                return !facts.hasOwnProperty('action') && facts.hasOwnProperty('portal');
+            },
+            triggerOn: true,
+            actions: function (facts) {
+                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).move(facts.portal.row, facts.portal.column);
                 return facts;
             }
         },
@@ -440,7 +465,7 @@ function newRuleEngine() {
             }
         },
         {
-            name: "go back to safe",
+            name: "discover on border",
             priority: 6,
             conditions: function (facts) { // flow = cardinal pos inside grid : Array
                 return !facts.hasOwnProperty('action');
@@ -455,23 +480,53 @@ function newRuleEngine() {
                 var pos = it.next();
                 var fact;
                 while (!pos.done) {
-                    count = countNeighborsNotVisited(pos.row, pos.column);
-                    if (count == nbMaxNeighbors) maxs.push(pos);
+                    count = countNeighborsNotVisited(pos.value.row, pos.value.column);
+                    if (count == nbMaxNeighbors) maxs.push({ row: pos.value.row, column: pos.value.column });
                     if (count > nbMaxNeighbors) {
-                        maxs = [pos];
+                        maxs = [{ row: pos.value.row, column: pos.value.column }];
                         nbMaxNeighbors = count;
                     }
                     pos = it.next();
                 }
-                var minDanger =
-                    maxs.reduce((acc, e, i, arr) => {
-                        var fact = facts.grid[e.row][e.column].fact;
-                        return fact.danger < acc.danger ? fact : acc;
-                    }, {danger: Number.MAX_VALUE});
-                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).move(minDanger.row, minDanger.column);
+                var posMinDanger = maxs[0];
+                var minDanger = facts.grid[posMinDanger.row][posMinDanger.column].fact.danger;
+                for (var i = 1; i < maxs.length; i++) {
+                    var pos = maxs[i];
+                    var danger = facts.grid[pos.row][pos.column].fact.danger;
+                    if (danger < minDanger) {
+                        posMinDanger = pos;
+                        minDanger = danger;
+                    }
+                }
+                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).move(posMinDanger.row, posMinDanger.column);
                 return facts;
             }
-        }
+        },
+        {
+            name: "do not loop",
+            priority: 6,
+            conditions: function (facts) { // flow = cardinal pos inside grid : Array
+                return !facts.hasOwnProperty('action');
+            },
+            triggerOn: true,
+            actions: function (facts) {
+                /* find visited with non-visited neighbors = border */
+                var next;
+                var it = facts.gridIterator(game.rows, game.columns);
+                var pos = it.next();
+                var fact;
+                while (!pos.done) {
+                    count = countNeighborsNotVisited(pos.value.row, pos.value.column);
+                    if (count > 0) {
+                        next = { row: pos.value.row, column: pos.value.column };
+                        break;
+                    }
+                    pos = it.next();
+                }
+                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).move(next.row, next.column);
+                return facts;
+            }
+        }        
     ];
     return new RuleEngine(rules);
 }
@@ -500,7 +555,6 @@ function stepInfer() {
     }
     game.doAction(action);
     delete facts.action;
-    console.log(game);
     /* update threshold */
     updateThreshold(facts);
     updateVue(facts);
@@ -513,6 +567,7 @@ function inferAction() {
     var column = facts.hero.column;
     var fact = facts.grid[row][column].fact;
     fact.visited = true;
+    delete facts.portal;
     /* update certain fact */
     if (game.getUnitsAt("hole", row, column)) {
         facts.score -= 10 * game.rows * game.columns;
