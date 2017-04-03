@@ -1,22 +1,18 @@
 
 /**
- * @param {String} name
+ * @param {Unit} unit
  */
-function Action(name) {
-    this.name = name;
+function Action(unit) {
+    this.unit = unit;
 }
 
 /**
  * Creates a new move action
  */
-Action.prototype.move = function (fromRow, fromCol, toRow, toCol) {
+Action.prototype.move = function (toRow, toCol) {
     return {
-        unit: this.name,
+        unit: this.unit,
         action: 'move',
-        from: {
-            row: fromRow,
-            column: fromCol
-        },
         to: {
             row: toRow,
             column: toCol
@@ -29,23 +25,9 @@ Action.prototype.move = function (fromRow, fromCol, toRow, toCol) {
  */
 Action.prototype.attack = function (name, toRow, toCol) {
     return {
-        unit: this.name,
+        unit: this.unit,
         action: 'attack',
         on: name,
-        to: {
-            row: toRow,
-            column: toCol
-        }
-    }
-}
-
-/**
- * Creates a new move restart action
- */
-Action.prototype.restart = function (toRow, toCol) {
-    return {
-        unit: this.name,
-        action: 'restart',
         to: {
             row: toRow,
             column: toCol

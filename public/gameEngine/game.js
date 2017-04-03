@@ -21,7 +21,6 @@ function Game(images, canvas, rows, columns) {
     this.canvas.height = this.kPixelHeight;
     this.context = this.canvas.getContext("2d");
     this.units = fill2D(rows, columns, {});
-    this.initPos;
 }
 
 /** is position inside grid ?
@@ -71,12 +70,6 @@ Game.prototype.getAllUnitsAt = function (row, column) {
 Game.prototype.addUnitAt = function (name, row, column, superposable) {
     if (this.canAddAt(row, column)) {
         (this.units[row][column])[name] = new Unit(name, row, column, superposable);
-        if (name == 'hero') { // save the initial position of the hero
-            this.initPos = {
-                row: row,
-                column: column
-            }
-        }
     }
 }
 
@@ -173,10 +166,10 @@ Game.prototype.removeUnitAt = function (name, row, column) {
 /**
  * move Component from old position to new position
  */
-Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
+Game.prototype.moveUnitTo = function (unit, newRow, newCol) {
     if (this.isInsideGrid(newRow, newCol)) {
-        this.removeUnitAt(name, oldRow, oldCol);
-        this.addUnitAt(name, newRow, newCol);
+        this.removeUnitAt(unit.name, unit.row, unit.column);
+        this.addUnitAt(unit.name, newRow, newCol, unit.superposable);
     }
 }
 
@@ -187,11 +180,8 @@ Game.prototype.moveUnitTo = function (name, oldRow, oldCol, newRow, newCol) {
 Game.prototype.doAction = function (action) {
     switch (action.action) {
         case 'move':
-            this.moveUnitTo(action.unit, action.from.row, action.from.column, action.to.row, action.to.column);
-            break;
-        case 'restart':
-            this.addUnitAt(action.unit, action.to.row, action.to.column, true);
-            break;            
+            this.moveUnitTo(action.unit, action.to.row, action.to.column);
+            break;        
         case 'attack':
             this.removeUnitAt(action.on, action.to.row, action.to.column);
             break;

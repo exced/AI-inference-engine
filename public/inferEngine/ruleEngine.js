@@ -78,15 +78,11 @@ RuleEngine.prototype.infer = function (facts) {
     var rulesByPriority = prioritize(this.rules);
     for (var i = 0; i < rulesByPriority.length; i++) {
         while (this.someNotMarked(rulesByPriority[i])) {
-            //console.log("rules step" + JSON.stringify(rulesByPriority[i]));
             selectedRules = this.selectRules(facts, rulesByPriority[i]);
             if (selectedRules.length > 0) {
-                //console.log("selected rules" + JSON.stringify(selectedRules));
                 rule = selectedRules[0];
-                //console.log("rule" + JSON.stringify(rule));
                 facts = rule.actions(facts);
                 rule.marked = true;
-                //console.log(facts);
             }
         }
     }

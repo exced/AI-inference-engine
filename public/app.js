@@ -4,7 +4,7 @@ var columns = 3;
 var infer;
 var facts;
 var threshold = 0.5; // risk threshold
-var learningRate = 0.2; // decision making threshold : agent learns the best threshold to maximize the score.
+var learningRate = 0.01; // decision making threshold : agent learns the best threshold to maximize the score.
 
 var vue = new Vue({
     el: '#scores',
@@ -35,32 +35,6 @@ document.addEventListener("keydown", function (e) {
         stepInfer();
     }
 }, false);
-
-/**
- * initialize facts
- */
-function initFacts(game, score, learningRate, threshold) {
-    var fact = {
-        visited: false,
-        rainbow: 0,
-        monster: 0,
-        hole: 0,
-        cloud: 0,
-        danger: 0,
-        portal: 0
-    };
-    var hero = game.getUnits("hero")[0];
-    facts = {
-        hero: {
-            row: hero.row,
-            column: hero.column
-        },
-        score: score,
-        learningRate: learningRate,
-        threshold: threshold,
-        grid: fill2DFact(game.rows, game.columns, fact)
-    }
-}
 
 /** Loads all images
  * @param {String} sources
@@ -126,6 +100,43 @@ function initUnits(game) {
 }
 
 /**
+ * initialize facts
+ */
+function initFacts(game, score, learningRate, threshold) {
+    var fact = {
+        visited: false,
+        rainbow: 0,
+        monster: 0,
+        hole: 0,
+        cloud: 0,
+        danger: 0,
+        portal: 0
+    };
+    var hero = game.getUnits("hero")[0];
+    facts = {
+        initPos: { // save the initial position of the hero
+            row: hero.row,
+            column: hero.column
+        },
+        hero: {
+            row: hero.row,
+            column: hero.column
+        },
+        score: score,
+        learningRate: learningRate,
+        threshold: threshold,
+        grid: fill2DFact(game.rows, game.columns, fact),
+        gridIterator: function* gridIterator(rows, cols) {
+            for (var r = 0; r < rows; r++) {
+                for (var c = 0; c < cols; c++) {
+                    yield { row: r, column: c };
+                }
+            }
+        }
+    }
+}
+
+/**
  * init and create a new game 
  * @param {Number} rows 
  * @param {Number} columns 
@@ -142,26 +153,18 @@ function newGame(images, rows, columns) {
 }
 
 function countNeighborsNotVisited(row, column) {
-    var neighbors = game.accessible_from(row, column);
-    var count = 0;
-    for (var n in neighbors) {
-        if (!facts.grid[n.row][n.column].fact.visited) {
-            count++;
-        }
-    }
-    return count;
+    return game.accessible_from(row, column)
+        .reduce((acc, e, i, arr) => {
+            return !facts.grid[e.row][e.column].fact.visited ? 1 + acc : acc;
+        }, 0);
 }
 
 function minDangerAround(row, column) {
-    var minDangerAround = Number.MAX_VALUE;
-    var danger;
-    for (var around in game.accessible_from(row, column)) {
-        danger = facts.grid[around.row][around.column].fact.danger
-        if (danger < minDangerAround) {
-            minDangerAround = danger;
-        }
-    }
-    return minDangerAround;
+    return game.accessible_from(row, column)
+        .reduce((acc, e, i, arr) => {
+            var danger = facts.grid[e.row][e.column].fact.danger;
+            return danger < acc ? danger : acc;
+        }, Number.MAX_VALUE);
 }
 
 function newRuleEngine() {
@@ -207,11 +210,13 @@ function newRuleEngine() {
             name: "empty is safe",
             priority: 2,
             conditions: function (facts) { // flow = cardinal pos inside grid : Array. accessible_from
-                return (facts.grid[facts.hero.row][facts.hero.column].fact.empty == 1);
+                var fact = facts.grid[facts.hero.row][facts.hero.column].fact;
+                return (fact.hole == 0 && fact.cloud == 0 && fact.rainbow == 0 && fact.monster == 0);
             },
             triggerOn: true,
             actions: function (facts) {
                 facts.grid[facts.hero.row][facts.hero.column].fact.danger = 0;
+                facts.grid[facts.hero.row][facts.hero.column].fact.empty = 1;
                 return facts;
             }
         },
@@ -223,15 +228,22 @@ function newRuleEngine() {
             },
             triggerOn: true,
             actions: function (facts) {
-                var possibleMonster =
-                    facts.accessible_from
-                        .filter((e, i, a) => {
-                            var fact = facts.grid[e.row][e.column];
-                            return !fact.certainNot('monster');
-                        });
-                possibleMonster.map((pos) => {
-                    facts.grid[pos.row][pos.column].fact.monster = 1 / possibleMonster.length;
-                });
+                var it = facts.gridIterator(game.rows, game.columns);
+                var pos = it.next();
+                var possibleMonster;
+                var fact;
+                while (!pos.done) {
+                    possibleMonster =
+                        game.accessible_from(pos.value.row, pos.value.column)
+                            .filter((e, i, a) => {
+                                fact = facts.grid[e.row][e.column];
+                                return !fact.visited && fact.rainbow == 1;
+                            });
+                    possibleMonster.map((pos) => {
+                        facts.grid[pos.row][pos.column].fact.monster = 1 / possibleMonster.length;
+                    });
+                    pos = it.next();
+                }
                 return facts;
             }
         },
@@ -243,8 +255,6 @@ function newRuleEngine() {
             },
             triggerOn: true,
             actions: function (facts) {
-                console.log("RAINBOW AROUND MONSTER");
-                console.log(facts);
                 facts.accessible_from.map((pos) => {
                     facts.grid[pos.row][pos.column].fact.rainbow = 1;
                 })
@@ -259,17 +269,22 @@ function newRuleEngine() {
             },
             triggerOn: true,
             actions: function (facts) {
-                console.log("HOLE AROUND CLOUD");
-                console.log(facts);
-                var possibleHole =
-                    facts.accessible_from
-                        .filter((e, i, a) => {
-                            var fact = facts.grid[e.row][e.column];
-                            return !fact.certainNot('hole');
-                        });
-                possibleHole.map((pos) => {
-                    facts.grid[pos.row][pos.column].fact.hole = 1 / possibleHole.length;
-                });
+                var it = facts.gridIterator(game.rows, game.columns);
+                var pos = it.next();
+                var possibleHole;
+                var fact;
+                while (!pos.done) {
+                    possibleHole =
+                        game.accessible_from(pos.value.row, pos.value.column)
+                            .filter((e, i, a) => {
+                                fact = facts.grid[e.row][e.column];
+                                return !fact.visited && fact.cloud == 1;
+                            });
+                    possibleHole.map((pos) => {
+                        facts.grid[pos.row][pos.column].fact.hole = 1 / possibleHole.length;
+                    });
+                    pos = it.next();
+                }
                 return facts;
             }
         },
@@ -281,7 +296,7 @@ function newRuleEngine() {
             },
             triggerOn: true,
             actions: function (facts) {
-                flowfacts.accessible_from.map((pos) => {
+                facts.accessible_from.map((pos) => {
                     facts.grid[pos.row][pos.column].fact.cloud = 1;
                 })
                 return facts;
@@ -379,7 +394,7 @@ function newRuleEngine() {
                         minDanger = danger;
                     }
                 }
-                facts.action = new Action('hero').move(facts.hero.row, facts.hero.column, posMinDanger.row, posMinDanger.column);
+                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).move(posMinDanger.row, posMinDanger.column);
                 return facts;
             }
         },
@@ -420,7 +435,7 @@ function newRuleEngine() {
                         maxMonster = monster;
                     }
                 }
-                facts.action = new Action('hero').attack('monster', maxMonster.row, maxMonster.column);
+                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).attack('monster', maxMonster.row, maxMonster.column);
                 return facts;
             }
         },
@@ -432,34 +447,28 @@ function newRuleEngine() {
             },
             triggerOn: true,
             actions: function (facts) {
-                /* collect all visited with non-visited neighbors */
+                /* collect all visited with non-visited neighbors = border */
                 var nbMaxNeighbors = 0;
+                var maxs = [];
                 var count;
-                for (var r = 0; r < facts.rows; r++) {
-                    for (var c = 0; c < facts.columns; c++) {
-                        count = countNeighborsNotVisited(r, c);
-                        if (count >= nbMaxNeighbors) {
-                            nbMaxNeighbors = count;
-                        }
+                var it = facts.gridIterator(game.rows, game.columns);
+                var pos = it.next();
+                var fact;
+                while (!pos.done) {
+                    count = countNeighborsNotVisited(pos.row, pos.column);
+                    if (count == nbMaxNeighbors) maxs.push(pos);
+                    if (count > nbMaxNeighbors) {
+                        maxs = [pos];
+                        nbMaxNeighbors = count;
                     }
+                    pos = it.next();
                 }
-                var minDangerAround = Number.MAX_VALUE;
-                var min = Number.MAX_VALUE;
-                var posMinDangerAround;
-                /* filter max non visited */
-                for (var r = 0; r < facts.rows; r++) {
-                    for (var c = 0; c < facts.columns; c++) {
-                        count = countNeighborsNotVisited(r, c);
-                        if (count == nbMaxNeighbors) {
-                            min = minDangerAround(r, c);
-                            if (min < minDangerAround) {
-                                minDangerAround = min;
-                                posMinDangerAround = { row: r, column: c };
-                            }
-                        }
-                    }
-                }
-                facts.action = new Action('hero').move(facts.hero.row, facts.hero.column, minDangerAround.row, minDangerAround.column);
+                var minDanger =
+                    maxs.reduce((acc, e, i, arr) => {
+                        var fact = facts.grid[e.row][e.column].fact;
+                        return fact.danger < acc.danger ? fact : acc;
+                    }, {danger: Number.MAX_VALUE});
+                facts.action = new Action(new Unit('hero', facts.hero.row, facts.hero.column, true)).move(minDanger.row, minDanger.column);
                 return facts;
             }
         }
@@ -469,29 +478,32 @@ function newRuleEngine() {
 
 function updateThreshold(facts) {
     var up = facts.learningRate * Math.tanh(facts.score);
-    if (!(facts.threshold - up < 0 || facts.threshold - up > 1)) {
-        facts.threshold -= up;
+    if (facts.threshold + up >= 0 && facts.threshold + up <= 1) {
+        facts.threshold += up;
     }
+}
+
+function updateVue(facts) {
+    vue.score = facts.score;
+    vue.threshold = facts.threshold;
 }
 
 /* get action, execute it and update GUI */
 function stepInfer() {
     var action = inferAction();
-    console.log("action ");
-    console.log(action);
-    if (action.action == "move") {
+    if (action.action === "move") {
         facts.score -= 1;
-        vue.score -= 1;
         facts.hero.row = action.to.row;
         facts.hero.column = action.to.column;
     } else if (action.action == "attack") {
         facts.score -= 10;
-        vue.score -= 10;
     }
     game.doAction(action);
     delete facts.action;
+    console.log(game);
     /* update threshold */
     updateThreshold(facts);
+    updateVue(facts);
     game.show();
 }
 
@@ -503,37 +515,30 @@ function inferAction() {
     fact.visited = true;
     /* update certain fact */
     if (game.getUnitsAt("hole", row, column)) {
-        vue.score -= 10 * game.rows * game.columns;
         facts.score -= 10 * game.rows * game.columns;
         fact.hole = 1;
-        console.log("HOLE");
-        return new Action('hero').restart(game.initPos.row, game.initPos.column);
-    } else if (game.getUnitsAt("cloud", row, column)) {
-        console.log("CLOUD");
-        fact.cloud = 1;
-    } else if (game.getUnitsAt("monster", row, column)) {
+        return new Action(new Unit('hero', row, column, true)).move(facts.initPos.row, facts.initPos.column);
+    }
+    if (game.getUnitsAt("monster", row, column)) {
         fact.monster = 1;
-        vue.score -= 10 * game.rows * game.columns;
         facts.score -= 10 * game.rows * game.columns;
-        console.log("MONSTER");
-        return new Action('hero').restart(game.initPos.row, game.initPos.column);
-    } else if (game.getUnitsAt("rainbow", row, column)) {
-        console.log("RAINBOW");
-        fact.rainbow = 1;
-    } else if (game.getUnitsAt("portal", row, column)) { // portal => nextGame
-        vue.score += 10 * game.rows * game.columns;
+        return new Action(new Unit('hero', row, column, true)).move(facts.initPos.row, facts.initPos.column);
+    }
+    if (game.getUnitsAt("portal", row, column)) { // portal => nextGame
         facts.score += 10 * game.rows * game.columns;
-        console.log("PORTAL");
         game = game.nextGame(); // does not reload the images
         initUnits(game);
         initFacts(game, facts.score, facts.learningRate, facts.threshold);
-        return new Action('hero').restart(game.initPos.row, game.initPos.column);
-    } else {
-        fact.empty = 1;
+        return new Action(new Unit('hero', row, column, true)).move(facts.initPos.row, facts.initPos.column);
+    }
+    if (game.getUnitsAt("cloud", row, column)) {
+        fact.cloud = 1;
+    }
+    if (game.getUnitsAt("rainbow", row, column)) {
+        fact.rainbow = 1;
     }
     /* infer */
     ruleEngine.infer(facts);
-    console.log(facts);
     return facts.action;
 }
 
